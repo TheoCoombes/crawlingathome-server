@@ -1,0 +1,75 @@
+<!DOCTYPE HTML>
+
+<html>
+	<head>
+	<title>Crawling@Home</title>
+        <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<meta http-equiv="refresh" content="15">
+	</head>
+	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
+        <h1>Crawling@Home Dashboard</h1>
+        <br><br>
+        <h2>Stats</h2>
+        <br>
+	<strong>Completion: {{ "{0:.2f}".format(completion) }}%</strong> ({{ progress_str }} shards completed)
+        <div class="progress">
+        <div class="progress-bar" role="progressbar" style="width: {{ completion }}%;" aria-valuenow='{{ completion }}' aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <br><br>
+        <h2>Running Jobs</h2>
+        <br>
+        {% if len(clients) != 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Shard #</th>
+                    <th scope="col">Shard Progress</th>
+                    <th scope="col">Jobs Completed</th>
+                    <th scope="col">Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in clients %}
+                        <tr>
+                            <th scope="row">{{ i }}</th>
+                            <td>{{ clients[i][0] }}</td>
+                            <td>{{ clients[i][1] }}</td>
+                            <td>{{ clients[i][2] }}</td>
+                            <td class="timestamp">{{ clients[i][3] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif completion == 100.0 %}
+            <p>All jobs have been completed, thank you!</p>
+        {% else %}
+            <p>There are no jobs running yet - <a href="/install">be the first</a>.</p>
+        {% endif %}
+        <br><br>
+        <h2>Links</h2>
+        <p>
+	<ul>
+                <br>
+	        <strong>Run Crawling@Home</strong>
+            <li><a href="/install">Get Started</a></li>
+	        
+                <br>
+                <strong>GitHub</strong>
+            <li><a href="https://github.com/TheoCoombes/crawlingathome">Client GitHub Repository</a></li>
+            <li><a href="https://github.com/TheoCoombes/crawlingathome-server">Server GitHub Repository</a></li>
+                
+                <br>
+                <strong>DALLE-pytorch</strong>
+            <li><a href="https://discord.gg/mVcgxMPD7e">DALLE-pytorch Discord server</a></li>
+            <li><a href="https://github.com/lucidrains/DALLE-pytorch">DALLE-pytorch GitHub Repository</a></li>
+	</ul>
+        </p>
+
+        <br><br>
+        <p>Made by <a href="https://github.com/TheoCoombes">Theo Coombes</a>, 2021</p>
+        
+        <script src="{{ url_for('static', filename='main.js') }}"></script>
+	</body>
+</html>
