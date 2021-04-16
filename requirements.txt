@@ -1,3 +1,2 @@
 Flask
-Random-Word
 PyYAML
