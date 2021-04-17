@@ -31,6 +31,8 @@ except ZeroDivisionError:
     completion = 0.00
     progress_str = "0 / 0"
 
+raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nodes:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many nodes connected to the server to prevent slow loading times.</i>"	
+
 @web_site.route('/')
 def index():
 	return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str)
@@ -39,9 +41,9 @@ def index():
 def install():
 	return render_template('install.html')
 
-@web_site.route('/clipdist.py')
-def clipdist():
-	return send_file("clipdist.txt")
+@web_site.route('/stats')
+def stats():
+	return raw_text_stats.format(progress_str, completion, len(clients), len(open_jobs), len(pending_jobs), len(closed_jobs))
 
 
 # API START ------
