@@ -4,7 +4,7 @@ from time import time, sleep
 from threading import Thread
 import json
 
-from config import HOST, PORT
+from config import HOST, PORT, IDLE_TIMEOUT
 
 with open("jobs/shard_info.json", "r") as f:
     shard_info = json.load(f)
@@ -141,12 +141,12 @@ def markAsDone():
     return "All good!", 200
 
 
-def check_idle():
+def check_idle(timeout):
     global clients, pending_jobs
 
     while True:
         for client in list(clients.keys()):
-            if (time() - clients[client][3]) > 900:
+            if (time() - clients[client][3]) > timeout:
                 try:
                     pending_jobs.pop(int(clients[client][0]) - 1)
                 except:
@@ -157,6 +157,6 @@ def check_idle():
         sleep(30)
         
 
-Thread(target=check_idle).start()
+Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
 
 web_site.run(host=HOST, port=PORT)
