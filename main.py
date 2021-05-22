@@ -83,7 +83,7 @@ def newJob():
     clients[name][1] = "Recieved new job"
     clients[name][3] = time()
 
-    return jsonify({"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"]})
+    return jsonify({"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]})
 
 @web_site.route('/api/jobCount', methods=["GET"])
 def jobCount():
