@@ -121,7 +121,7 @@ def bye():
 def markAsDone():
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str
 
-    name = request.form["name"]
+    name = request.json["name"]
 
     open_jobs.pop(int(clients[name][0]) - 1)
     pending_jobs.remove(clients[name][4])
