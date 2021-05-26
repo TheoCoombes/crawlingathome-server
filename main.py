@@ -58,7 +58,7 @@ def new():
     
     name = newName()
 
-    clients[name] = ["Waiting", "Initialized", 0, time()]
+    clients[name] = ["Waiting", "Initialized", 0, time(), None]
 
     return name
 
@@ -82,6 +82,7 @@ def newJob():
     clients[name][0] = str(count + 1)
     clients[name][1] = "Recieved new job"
     clients[name][3] = time()
+    clients[name][4] = shard
 
     return jsonify({"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]})
 
@@ -107,7 +108,7 @@ def bye():
     name = request.json["name"]
 
     try:
-        pending_jobs.pop(int(clients[name][0]) - 1)
+        pending_jobs.remove(clients[name][4])
     except:
         pass
 
@@ -120,10 +121,10 @@ def bye():
 def markAsDone():
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str
 
-    name = request.args["name"]
+    name = request.form["name"]
 
     open_jobs.pop(int(clients[name][0]) - 1)
-    pending_jobs.pop(int(clients[name][0]) - 1)
+    pending_jobs.remove(clients[name][4])
     closed_jobs.append(clients[name][0])
 
     with open("jobs/open.json", "w") as f:
@@ -134,7 +135,7 @@ def markAsDone():
     completion = (len(closed_jobs) / total_jobs) * 100
     progress_str = f"{len(closed_jobs)} / {total_jobs}"
 
-    clients[name][1] = "Uploading compiled shard"
+    clients[name][1] = "Completed Job"
     clients[name][2] += 1
     clients[name][3] = time()
 
@@ -148,7 +149,7 @@ def check_idle(timeout):
         for client in list(clients.keys()):
             if (time() - clients[client][3]) > timeout:
                 try:
-                    pending_jobs.pop(int(clients[client][0]) - 1)
+                    pending_jobs.remove(clients[client][4])
                 except:
                     pass
                 
