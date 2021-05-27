@@ -79,7 +79,9 @@ def newJob():
     
     pending_jobs.append(shard)
 
-    clients[name][0] = str(count + 1)
+    count += len(pending_jobs) + len(closed_jobs) + 1
+
+    clients[name][0] = str(count)
     clients[name][1] = "Recieved new job"
     clients[name][3] = time()
     clients[name][4] = shard
@@ -123,7 +125,7 @@ def markAsDone():
 
     name = request.json["name"]
 
-    open_jobs.pop(int(clients[name][0]) - 1)
+    open_jobs.remove(clients[name][4])
     pending_jobs.remove(clients[name][4])
     closed_jobs.append(clients[name][0])
 
