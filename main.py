@@ -85,7 +85,7 @@ def newJob():
     
     pending_jobs.append(shard)
 
-    count += len(pending_jobs) + len(closed_jobs) + 1
+    count += len(closed_jobs) + 1
 
     clients[name][0] = str(count)
     clients[name][1] = "Recieved new job"
