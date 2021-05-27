@@ -24,16 +24,12 @@ with open("jobs/closed.json", "r") as f:
 
 total_jobs = shard_info["total_shards"]
 
-def _updateCompletion():
-    global completion, progress_str
-    try:
-        completion = (len(closed_jobs) / total_jobs) * 100
-        progress_str = f"{len(closed_jobs)} / {total_jobs}"
-    except ZeroDivisionError:
-        completion = 0.00
-        progress_str = "0 / 0"
-
-_updateCompletion()
+try:
+    completion = (len(closed_jobs) / total_jobs) * 100
+    progress_str = f"{len(closed_jobs)} / {total_jobs}"
+except ZeroDivisionError:
+    completion = 0.00
+    progress_str = "0 / 0"
 	
 raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nodes:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many nodes connected to the server to prevent slow loading times.</i>"	
 
@@ -48,7 +44,6 @@ def install():
 
 @web_site.route('/stats')
 def stats():
-	_updateCompletion()
 	return raw_text_stats.format(progress_str, completion, len(clients), len(open_jobs), len(pending_jobs), len(closed_jobs))
 
 
