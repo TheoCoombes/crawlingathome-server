@@ -35,7 +35,6 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nod
 
 @web_site.route('/')
 def index():
-	_updateCompletion()
 	return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str)
 
 @web_site.route('/install')
