@@ -46,7 +46,7 @@ def install():
 
 @web_site.route('/leaderboard')
 def leaderboard_page():
-    return render_template('leaderboard.html', leaderboard=leaderboard)
+    return render_template('leaderboard.html', len=len, leaderboard=leaderboard)
 
 @web_site.route('/stats')
 def stats():
