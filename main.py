@@ -83,7 +83,7 @@ def newJob():
     c = 0
     shard = open_jobs[c]
     while shard in pending_jobs:
-        c += 0
+        c += 1
         shard = open_jobs[c]
     
     pending_jobs.append(shard)
