@@ -18,13 +18,15 @@
                     <tr>
                     <th scope="col">Nickname</th>
                     <th scope="col">Jobs Completed</th>
+	                <th scope="col">Image-Text Pairs Scraped</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for i in leaderboard %}
                         <tr>
                             <th scope="row">{{ i }}</th>
-                            <td>{{ leaderboard[i] }}</td>
+                            <td>{{ leaderboard[i][0] }}</td>
+			                <td>{{ leaderboard[i][1] }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
