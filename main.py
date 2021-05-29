@@ -39,7 +39,8 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nod
 
 @web_site.route('/')
 def index():
-    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str)
+    total_pairs = sum([i[1] for i in leaderboard])
+    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs)
 
 @web_site.route('/install')
 def install():
@@ -132,6 +133,7 @@ def markAsDone():
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str
 
     name = request.json["name"]
+    count = request.json["count"]
 
     open_jobs.remove(clients[name][4])
     pending_jobs.remove(clients[name][4])
@@ -150,9 +152,10 @@ def markAsDone():
     clients[name][3] = time()
 
     try:
-        leaderboard[clients[name][5]] += 1
+        leaderboard[clients[name][5]][0] += 1
+        leaderboard[clients[name][5]][1] += count
     except:
-        leaderboard[clients[name][5]] = 1
+        leaderboard[clients[name][5]] = [1, count]
 
     with open("jobs/leaderboard.json", "w") as f:
         json.dump(leaderboard, f)
