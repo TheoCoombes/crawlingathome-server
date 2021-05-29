@@ -92,7 +92,7 @@ def newJob():
     if shard["shard"] == 0:
         count -= 1
 
-    clients[name][0] = str(count)
+    clients[name][0] = str(int(count))
     clients[name][1] = "Recieved new job"
     clients[name][3] = time()
     clients[name][4] = shard
@@ -132,7 +132,7 @@ def bye():
 
 @web_site.route('/api/markAsDone', methods=["POST"])
 def markAsDone():
-    global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str
+    global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str, leaderboard
 
     name = request.json["name"]
     count = request.json["count"]
