@@ -46,7 +46,7 @@ def install():
 
 @web_site.route('/leaderboard')
 def leaderboard_page():
-    return render_template('leaderboard.html', len=len, leaderboard=leaderboard)
+    return render_template('leaderboard.html', len=len, leaderboard=dict(sorted(leaderboard.items(), key=lambda x: x[1], reverse=True)))
 
 @web_site.route('/stats')
 def stats():
@@ -65,7 +65,7 @@ def new():
     
     name = newName()
 
-    clients[name] = ["Waiting", "Initialized", 0, time(), None, request.args.get("nickname", None)]
+    clients[name] = ["Waiting", "Initialized", 0, time(), None, request.args.get("nickname", "None")]
 
     return name
 
@@ -78,15 +78,15 @@ def newJob():
     if len(open_jobs) == 0 or len(open_jobs) == len(pending_jobs):
         return "No new jobs available.", 503
 
-    count = 0
     shard = open_jobs[count]
     while shard in pending_jobs:
-        count += 1
         shard = open_jobs[count]
     
     pending_jobs.append(shard)
 
-    count += len(closed_jobs) + 1
+    count = (np.int64(shard["end_id"]) / 1000000) * 2
+    if shard["shard"] == 0:
+        count -= 1
 
     clients[name][0] = str(count)
     clients[name][1] = "Recieved new job"
