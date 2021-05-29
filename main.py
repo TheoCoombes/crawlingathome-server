@@ -149,12 +149,12 @@ def markAsDone():
     clients[name][3] = time()
 
     try:
-    leaderboard[clients[name][5]] += 1
+        leaderboard[clients[name][5]] += 1
     except:
-    leaderboard[clients[name][5]] = 1
+        leaderboard[clients[name][5]] = 1
 
     with open("jobs/leaderboard.json", "w") as f:
-    json.dump(leaderboard, f)
+        json.dump(leaderboard, f)
 
     return "All good!", 200
 
