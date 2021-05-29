@@ -33,24 +33,24 @@ try:
 except ZeroDivisionError:
     completion = 0.00
     progress_str = "0 / 0"
-	
-raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nodes:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many nodes connected to the server to prevent slow loading times.</i>"	
+    
+raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nodes:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many nodes connected to the server to prevent slow loading times.</i>"    
 
 @web_site.route('/')
 def index():
-	return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str)
+    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str)
 
 @web_site.route('/install')
 def install():
-	return render_template('install.html')
+    return render_template('install.html')
 
 @web_site.route('/leaderboard')
 def leaderboard_page():
-	return render_template('leaderboard.html', leaderboard=leaderboard)
+    return render_template('leaderboard.html', leaderboard=leaderboard)
 
 @web_site.route('/stats')
 def stats():
-	return raw_text_stats.format(progress_str, completion, len(clients), len(open_jobs), len(pending_jobs), len(closed_jobs))
+    return raw_text_stats.format(progress_str, completion, len(clients), len(open_jobs), len(pending_jobs), len(closed_jobs))
 
 
 # API START ------
@@ -149,12 +149,12 @@ def markAsDone():
     clients[name][3] = time()
 
     try:
-	leaderboard[clients[name][5]] += 1
+    leaderboard[clients[name][5]] += 1
     except:
-	leaderboard[clients[name][5]] = 1
+    leaderboard[clients[name][5]] = 1
 
     with open("jobs/leaderboard.json", "w") as f:
-	json.dump(leaderboard, f)
+    json.dump(leaderboard, f)
 
     return "All good!", 200
 
