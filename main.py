@@ -12,7 +12,7 @@ with open("jobs/shard_info.json", "r") as f:
 web_site = Flask(__name__)
 
 clients = {}
-# { "uuid": [current_shard : str, progress : str, jobs_completed : int, last_seen : float], ... }
+# { "uuid": [current_shard : str, progress : str, jobs_completed : int, last_seen : float, shard_data : dict, owner_nickname : str], ... }
 
 with open("jobs/open.json", "r") as f:
     open_jobs = json.load(f)
@@ -21,6 +21,9 @@ pending_jobs = []
 
 with open("jobs/closed.json", "r") as f:
     closed_jobs = json.load(f)
+
+with open("jobs/leaderboard.json", "r") as f:
+    leaderboard = json.load(f)
 
 total_jobs = shard_info["total_shards"]
 
@@ -41,6 +44,10 @@ def index():
 def install():
 	return render_template('install.html')
 
+@web_site.route('/leaderboard')
+def leaderboard_page():
+	return render_template('leaderboard.html', leaderboard=leaderboard)
+
 @web_site.route('/stats')
 def stats():
 	return raw_text_stats.format(progress_str, completion, len(clients), len(open_jobs), len(pending_jobs), len(closed_jobs))
@@ -58,7 +65,7 @@ def new():
     
     name = newName()
 
-    clients[name] = ["Waiting", "Initialized", 0, time(), None]
+    clients[name] = ["Waiting", "Initialized", 0, time(), None, request.args.get("nickname", None)]
 
     return name
 
@@ -140,6 +147,14 @@ def markAsDone():
     clients[name][1] = "Completed Job"
     clients[name][2] += 1
     clients[name][3] = time()
+
+    try:
+	leaderboard[clients[name][5]] += 1
+    except:
+	leaderboard[clients[name][5]] = 1
+
+    with open("jobs/leaderboard.json", "w") as f:
+	json.dump(leaderboard, f)
 
     return "All good!", 200
 
