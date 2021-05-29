@@ -80,9 +80,11 @@ def newJob():
     if len(open_jobs) == 0 or len(open_jobs) == len(pending_jobs):
         return "No new jobs available.", 503
 
-    shard = open_jobs[count]
+    c = 0
+    shard = open_jobs[c]
     while shard in pending_jobs:
-        shard = open_jobs[count]
+        c += 0
+        shard = open_jobs[c]
     
     pending_jobs.append(shard)
 
