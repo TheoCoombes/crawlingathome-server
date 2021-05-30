@@ -39,7 +39,7 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Nod
 
 @web_site.route('/')
 def index():
-    total_pairs = sum([int(i[1]) for i in leaderboard])
+    total_pairs = sum([leaderboard[i][1] for i in leaderboard])
     return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs)
 
 @web_site.route('/install')
