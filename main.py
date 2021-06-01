@@ -92,7 +92,7 @@ def new():
         return "No new jobs available.", 503
     
     display_name = newName()
-    uuid = uuid4()
+    uuid = str(uuid4())
     
     worker_data = {
         "shard_number": "Waiting",
