@@ -17,7 +17,7 @@
         <div class="progress-bar" role="progressbar" style="width: {{ completion }}%;" aria-valuenow='{{ completion }}' aria-valuemin="0" aria-valuemax="100"></div>
         </div>
 	<br>
-	<strong>{{ total_pairs }}</strong> image-text pairs scraped
+	<strong>{{ "{:,}".format(total_pairs) }}</strong> image-text pairs scraped
 	<br><br>
 	<strong>ETA:</strong> {{ eta }}
         <br><br><br>
@@ -39,9 +39,9 @@
                     {% for i in clients %}
                         <tr>
                             <th scope="row">{{ clients[i]["display_name"] }}</th>
-                            <td>{{ clients[i]["shard_number"] }}</td>
+                            <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
                             <td>{{ clients[i]["progress"] }}</td>
-                            <td>{{ clients[i]["jobs_completed"] }}</td>
+                            <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
                             <td>{{ clients[i]["user_nickname"] }}</td>
                             <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
                         </tr>
