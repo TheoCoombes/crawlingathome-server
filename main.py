@@ -38,7 +38,7 @@ total_pairs = sum([leaderboard[i][1] for i in leaderboard])
 
 try:
     completion = (len(closed_jobs) / total_jobs) * 100
-    progress_str = f"{len(closed_jobs)} / {total_jobs}"
+    progress_str = f"{len(closed_jobs):,} / {total_jobs:,}"
 except ZeroDivisionError:
     completion = 0.00
     progress_str = "0 / 0"
@@ -78,8 +78,10 @@ def data():
         "total_pairs_scraped": total_pairs,
         "open_jobs": len(open_jobs),
         "pending_jobs": len(pending_jobs),
-        "closed_jobs": len(closed_jobs)
+        "closed_jobs": len(closed_jobs),
+        "leaderboard": leaderboard
     })
+
 
 # API START ------
 
@@ -196,7 +198,7 @@ def markAsDone():
         json.dump(closed_jobs, f)
     
     completion = (len(closed_jobs) / total_jobs) * 100
-    progress_str = f"{len(closed_jobs)} / {total_jobs}"
+    progress_str = f"{len(closed_jobs):,} / {total_jobs:,}"
 
     clients[token]["progress"] = "Completed Job"
     clients[token]["jobs_completed"] += 1
