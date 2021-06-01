@@ -31,17 +31,19 @@
                     <th scope="col">Shard #</th>
                     <th scope="col">Shard Progress</th>
                     <th scope="col">Jobs Completed</th>
+		    <th scope="col">Owner's Nickname</th>
                     <th scope="col">Last Seen</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for i in clients %}
                         <tr>
-                            <th scope="row">{{ i }}</th>
-                            <td>{{ clients[i][0] }}</td>
-                            <td>{{ clients[i][1] }}</td>
-                            <td>{{ clients[i][2] }}</td>
-                            <td class="timestamp">{{ clients[i][3] }}</td>
+                            <th scope="row">{{ clients[i]["display_name"] }}</th>
+                            <td>{{ clients[i]["shard_number"] }}</td>
+                            <td>{{ clients[i]["progress"] }}</td>
+                            <td>{{ clients[i]["jobs_completed"] }}</td>
+                            <td>{{ clients[i]["user_nickname"] }}</td>
+                            <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -55,18 +57,18 @@
         <h2>Links</h2>
         <p>
 	<ul>
-                <br>
-	        <strong>Run Crawling@Home</strong>
+            <br>
+	    <strong>Run Crawling@Home</strong>
 	    <li><a href="/leaderboard">Leaderboard</a></li>
             <li><a href="/install">Get Started</a></li>
 	        
-                <br>
-                <strong>GitHub</strong>
+            <br>
+            <strong>GitHub</strong>
             <li><a href="https://github.com/TheoCoombes/crawlingathome">Client GitHub Repository</a></li>
             <li><a href="https://github.com/TheoCoombes/crawlingathome-server">Server GitHub Repository</a></li>
                 
-                <br>
-                <strong>DALLE-pytorch</strong>
+            <br>
+            <strong>DALLE-pytorch</strong>
             <li><a href="https://discord.gg/mVcgxMPD7e">DALLE-pytorch Discord server</a></li>
             <li><a href="https://github.com/lucidrains/DALLE-pytorch">DALLE-pytorch GitHub Repository</a></li>
 	</ul>
@@ -74,8 +76,8 @@
 
         <br><br>
 	
-	Server v0.0.2
-	Client v0.0.1
+	Server Version: v0.0.2
+	Latest Client Version: v0.0.1
         
         <script src="{{ url_for('static', filename='main.js') }}"></script>
 	</body>
