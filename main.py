@@ -69,6 +69,17 @@ def leaderboard_page():
 def stats():
     return raw_text_stats.format(progress_str, completion, len(clients), total_pairs, len(open_jobs), len(pending_jobs), len(closed_jobs))
 
+@web_site.route('/data')
+def data():
+    return jsonify({
+        "completion_str": progress_str,
+        "completion_float": completion,
+        "total_connected_workers": len(clients),
+        "total_pairs_scraped": total_pairs,
+        "open_jobs": len(open_jobs),
+        "pending_jobs": len(pending_jobs),
+        "closed_jobs": len(closed_jobs)
+    })
 
 # API START ------
 
