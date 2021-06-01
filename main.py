@@ -246,7 +246,10 @@ def calculate_eta():
         mean_per_second = mean / AVERAGE_INTERVAL
         remaining = len(open_jobs) - len(pending_jobs)
         
-        length = remaining // mean_per_second
+        try:
+            length = remaining // mean_per_second
+        except ZeroDivisionError:
+            continue
         
         eta = str(timedelta(seconds=length))
     
