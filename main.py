@@ -55,7 +55,7 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 @web_site.route('/')
 def index():
-    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs, eta=eta)
+    return render_template('index.html', len=len, int=int, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs, eta=eta)
 
 @web_site.route('/install')
 def install():
