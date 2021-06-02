@@ -194,7 +194,7 @@ def markAsDone():
     
     open_jobs.remove(clients[token]["shard_data"])
     pending_jobs.remove(clients[token]["shard_data"])
-    closed_jobs.append(clients[token]["shard_number"]) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    closed_jobs.append(str(clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
 
     with open("jobs/open.json", "w") as f:
         json.dump(open_jobs, f)
