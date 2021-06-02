@@ -55,7 +55,7 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 @web_site.route('/')
 def index():
-    return render_template('index.html', len=len, int=int, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs, eta=eta)
+    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs, eta=eta)
 
 @web_site.route('/install')
 def install():
@@ -134,7 +134,7 @@ def newJob():
     if shard["shard"] == 0:
         count -= 1
 
-    clients[token]["shard_number"] = count
+    clients[token]["shard_number"] = count.astype(int)
     clients[token]["progress"] = "Recieved new job"
     clients[token]["last_seen"] = time()
     clients[token]["shard_data"] = shard
@@ -190,7 +190,7 @@ def markAsDone():
     
     open_jobs.remove(clients[token]["shard_data"])
     pending_jobs.remove(clients[token]["shard_data"])
-    closed_jobs.append(str(clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    closed_jobs.append(clients[token]["shard_number"]) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
 
     with open("jobs/open.json", "w") as f:
         json.dump(open_jobs, f)
