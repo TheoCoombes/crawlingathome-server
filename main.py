@@ -159,6 +159,8 @@ def updateProgress():
 
     clients[token]["progress"] = request.json["progress"]
     clients[token]["last_seen"] = time()
+    
+    return "good", 200
 
 
 @web_site.route('/api/bye', methods=["POST"])
@@ -175,6 +177,8 @@ def bye():
         pass
 
     del clients[token]
+    
+    return "good", 200
 
 
 @web_site.route('/api/markAsDone', methods=["POST"])
@@ -214,6 +218,8 @@ def markAsDone():
 
     with open("jobs/leaderboard.json", "w") as f:
         json.dump(leaderboard, f)
+     
+    return "good", 200
 
 
 def check_idle(timeout):
