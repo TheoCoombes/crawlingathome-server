@@ -12,6 +12,7 @@ from datetime import timedelta
 from time import time, sleep
 from threading import Thread
 from copy import deepcopy
+from pathlib import Path
 from uuid import uuid4
 import numpy as np
 import json
@@ -20,7 +21,7 @@ from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_L
 
 
 app = FastAPI()
-app.mount("static", StaticFiles(directory="static"), name="static")
+app.mount(Path("static"), StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
