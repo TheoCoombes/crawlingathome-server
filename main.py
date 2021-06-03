@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-import uvicorn
+from uvicorn import run
 from typing import Optional
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -349,4 +349,4 @@ Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
 Thread(target=calculate_eta).start()
 Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if the server crashes
 
-uvicorn.run(app, host=HOST, port=PORT)
+run(app, host=HOST, port=PORT)
