@@ -217,7 +217,7 @@ def newJob(token : Optional[str] = None):
 def jobCount():
     global open_jobs, pending_jobs
 
-    return str(len(open_jobs) - len(pending_jobs))
+    return str(len(open_jobs) - (len(pending_jobs) + len(closed_jobs)))
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
