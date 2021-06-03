@@ -287,7 +287,7 @@ def check_idle(timeout):
         for client in list(clients.keys()):
             if (time() - clients[client]["last_seen"]) > timeout:
                 try:
-                    pending_jobs.remove(str(clients[token]["shard_number"]))
+                    pending_jobs.remove(str(clients[client]["shard_number"]))
                 except:
                     pass
                 
