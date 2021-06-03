@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import uvicorn
 from typing import Optional
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -103,6 +104,8 @@ def data():
 @app.on_event("shutdown")
 def shutdown_event():
     global closed_jobs, leaderboard
+    
+    print("shutting down...")
     
     with open("jobs/closed.json", "w") as f:
         json.dump(closed_jobs, f)
@@ -336,4 +339,4 @@ Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
 Thread(target=calculate_eta).start()
 Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if the server crashes
 
-web_site.run(host=HOST, port=PORT)
+uvicorn.run(app, host=HOST, port=PORT)
