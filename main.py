@@ -8,7 +8,7 @@ from uuid import uuid4
 import numpy as np
 import json
 
-from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH, ADMIN_IP
+from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH, ADMIN_IPS
 
 
 web_site = Flask(__name__)
@@ -89,7 +89,7 @@ def data():
 
 @web_site.route('/admin/shutdown', methods=["GET"])
 def data():
-    if request.remote_addr == ADMIN_IP:
+    if request.remote_addr in ADMIN_IPS:
         global closed_jobs, leaderboard
         
         request.environ.get('werkzeug.server.shutdown', print)()
@@ -107,7 +107,7 @@ def data():
 
 @web_site.route('/admin/ban-shard', methods=["POST"])
 def data():
-    if request.remote_addr == ADMIN_IP:
+    if request.remote_addr in ADMIN_IPS:
         global open_jobs, closed_jobs, pending_jobs
         
         user_count = request.json["count"]
