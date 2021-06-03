@@ -135,6 +135,8 @@ def data():
         
         with open("jobs/open.json", "w") as f:
             json.dump(open_jobs, f)
+        with open("jobs/closed.json", "w") as f:
+            json.dump(closed_jobs, f)
         
         return f"Done, removed shard {user_count}!", 200
     else:
