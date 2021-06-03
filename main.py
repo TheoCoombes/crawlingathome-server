@@ -326,7 +326,7 @@ def save_jobs_leaderboard():
     while True:
          with open("jobs/closed.json", "w") as f:
             json.dump(closed_jobs, f)
-        with open("jobs/leaderboard.json", "w") as f:
+         with open("jobs/leaderboard.json", "w") as f:
             json.dump(leaderboard, f)
         
         sleep(300)
