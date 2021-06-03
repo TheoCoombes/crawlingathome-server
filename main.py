@@ -69,16 +69,16 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 
 @app.get('/', response_class=HTMLResponse)
-def index():
-    return templates.TemplateResponse('index.html', {"len": len, "clients": clients, "completion": completion, "progress_str": progress_str, "total_pairs": total_pairs, "eta": eta})
+def index(request : Request):
+    return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": clients, "completion": completion, "progress_str": progress_str, "total_pairs": total_pairs, "eta": eta})
 
 @app.get('/install', response_class=HTMLResponse)
 def install():
     return templates.TemplateResponse('install.html')
 
 @app.get('/leaderboard', response_class=HTMLResponse)
-def leaderboard_page():
-    return templates.TemplateResponse('leaderboard.html', {"len": len, "leaderboard": dict(sorted(leaderboard.items(), key=lambda x: x[1], reverse=True))})
+def leaderboard_page(request : Request):
+    return templates.TemplateResponse('leaderboard.html', {"request": request, "len": len, "leaderboard": dict(sorted(leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 @app.get('/stats', response_class=HTMLResponse)
 def stats():
