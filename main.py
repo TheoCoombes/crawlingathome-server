@@ -8,7 +8,7 @@ from uuid import uuid4
 import numpy as np
 import json
 
-from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH
+from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH, ADMIN_IP
 
 
 web_site = Flask(__name__)
@@ -28,7 +28,7 @@ with open("jobs/closed.json", "r") as f:
 
 with open("jobs/leaderboard.json", "r") as f:
     leaderboard = json.load(f)
-
+    
 pending_jobs = []
 
 total_jobs = shard_info["total_shards"]
@@ -79,10 +79,67 @@ def data():
         "open_jobs": len(open_jobs),
         "pending_jobs": len(pending_jobs),
         "closed_jobs": len(closed_jobs),
-        "leaderboard": leaderboard
+        "leaderboard": leaderboard,
+        "eta": eta
     })
 
 
+# ADMIN START ------
+
+
+@web_site.route('/admin/shutdown', methods=["GET"])
+def data():
+    if request.remote_addr == ADMIN_IP:
+        global closed_jobs, leaderboard
+        
+        request.environ.get('werkzeug.server.shutdown', print)()
+        sleep(5)
+        
+        with open("jobs/closed.json", "w") as f:
+            json.dump(closed_jobs, f)
+        with open("jobs/leaderboard.json", "w") as f:
+            json.dump(leaderboard, f)
+        
+        exit()
+        return "Shutting down...", 200
+    else:
+        return "You are not an admin!", 403
+
+@web_site.route('/admin/ban-shard', methods=["POST"])
+def data():
+    if request.remote_addr == ADMIN_IP:
+        global open_jobs, closed_jobs, pending_jobs
+        
+        user_count = request.json["count"]
+        
+        count = None
+        index = None
+        for i, shard in enumerate(open_jobs):
+            count = (np.int64(shard["end_id"]) / 1000000) * 2
+            if shard["shard"] == 0:
+                count -= 1
+            
+            if int(count) == user_count:
+                index = i
+                try:
+                    pending_jobs.remove(str(count))
+                except:
+                    pass
+                try:
+                    closed_jobs.remove(str(count))
+                except:
+                    pass
+                break
+         
+        del open_jobs[index]
+        
+        with open("jobs/open.json", "w") as f:
+            json.dump(open_jobs, f)
+        
+        return f"Done, removed shard {user_count}!", 200
+    else:
+        return "You are not an admin!", 403
+    
 # API START ------
 
 
@@ -101,7 +158,6 @@ def new():
         "progress": "Initialized",
         "jobs_completed": 0,
         "last_seen": time(),
-        "shard_data": None,
         "user_nickname": request.args["nickname"],
         "display_name": display_name
     }
@@ -115,7 +171,9 @@ def new():
 def newJob():
     global clients, pending_jobs, open_jobs
 
-    token = request.json["token"]
+    token = request.json.get("token", None)
+    if not token:
+        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
     if token not in clients:
         return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
 
@@ -124,20 +182,24 @@ def newJob():
 
     c = 0
     shard = open_jobs[c]
-    while shard in pending_jobs:
-        c += 1
-        shard = open_jobs[c]
     
-    pending_jobs.append(shard)
-
     count = (np.int64(shard["end_id"]) / 1000000) * 2
     if shard["shard"] == 0:
         count -= 1
+    
+    while shard in pending_jobs or str(count) in closed_jobs:
+        c += 1
+        shard = open_jobs[c]
+        
+        count = (np.int64(shard["end_id"]) / 1000000) * 2
+        if shard["shard"] == 0:
+            count -= 1
+    
+    pending_jobs.append(str(count.astype(int)))
 
     clients[token]["shard_number"] = count.astype(int)
     clients[token]["progress"] = "Recieved new job"
     clients[token]["last_seen"] = time()
-    clients[token]["shard_data"] = shard
 
     return jsonify({"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]})
 
@@ -153,7 +215,9 @@ def jobCount():
 def updateProgress():
     global clients
     
-    token = request.json["token"]
+    token = request.json.get("token", None)
+    if not token:
+        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
     if token not in clients:
         return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
 
@@ -167,12 +231,14 @@ def updateProgress():
 def bye():
     global clients, pending_jobs
     
-    token = request.json["token"]
+    token = request.json.get("token", None)
+    if not token:
+        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
     if token not in clients:
         return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
 
     try:
-        pending_jobs.remove(clients[token]["shard_data"])
+        pending_jobs.remove(str(clients[token]["shard_number"]))
     except:
         pass
 
@@ -185,21 +251,16 @@ def bye():
 def markAsDone():
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str, leaderboard, total_pairs
 
-    token = request.json["token"]
+    token = request.json.get("token", None)
+    if not token:
+        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
     if token not in clients:
         return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
     
     count = request.json["count"]
 
-    
-    open_jobs.remove(clients[token]["shard_data"])
-    pending_jobs.remove(clients[token]["shard_data"])
+    pending_jobs.remove(str(clients[token]["shard_number"]))
     closed_jobs.append(str(clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
-
-    with open("jobs/open.json", "w") as f:
-        json.dump(open_jobs, f)
-    with open("jobs/closed.json", "w") as f:
-        json.dump(closed_jobs, f)
     
     completion = (len(closed_jobs) / total_jobs) * 100
     progress_str = f"{len(closed_jobs):,} / {total_jobs:,}"
@@ -215,9 +276,6 @@ def markAsDone():
         leaderboard[clients[token]["user_nickname"]] = [1, count]
     
     total_pairs += count
-
-    with open("jobs/leaderboard.json", "w") as f:
-        json.dump(leaderboard, f)
      
     return "good", 200
 
@@ -229,7 +287,7 @@ def check_idle(timeout):
         for client in list(clients.keys()):
             if (time() - clients[client]["last_seen"]) > timeout:
                 try:
-                    pending_jobs.remove(clients[client]["shard_data"])
+                    pending_jobs.remove(str(clients[token]["shard_number"]))
                 except:
                     pass
                 
@@ -237,6 +295,7 @@ def check_idle(timeout):
 
         sleep(30)
 
+        
 def calculate_eta():
     global eta, closed_jobs, open_jobs, pending_jobs
     
@@ -261,9 +320,20 @@ def calculate_eta():
         
         eta = str(timedelta(seconds=length))
     
-
+def save_jobs_leaderboard():
+    global closed_jobs, leaderboard
+    
+    while True:
+         with open("jobs/closed.json", "w") as f:
+            json.dump(closed_jobs, f)
+        with open("jobs/leaderboard.json", "w") as f:
+            json.dump(leaderboard, f)
+        
+        sleep(300)
+    
     
 Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
 Thread(target=calculate_eta).start()
+Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if the server crashes
 
 web_site.run(host=HOST, port=PORT)
