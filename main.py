@@ -17,7 +17,12 @@ from uuid import uuid4
 import numpy as np
 import json
 
-from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH, ADMIN_IPS
+from config import (
+    HOST, PORT,
+    IDLE_TIMEOUT,
+    AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH,
+    ADMIN_IPS
+)
 
 
 app = FastAPI()
@@ -74,8 +79,8 @@ def index(request : Request):
     return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": clients, "completion": completion, "progress_str": progress_str, "total_pairs": total_pairs, "eta": eta})
 
 @app.get('/install', response_class=HTMLResponse)
-def install():
-    return templates.TemplateResponse('install.html')
+def install(request : Request):
+    return templates.TemplateResponse('install.html', {"request": request})
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 def leaderboard_page(request : Request):
