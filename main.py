@@ -1,4 +1,11 @@
-from flask import Flask, render_template, request, jsonify
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from typing import Optional
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from name import new as newName
 from datetime import timedelta
 from time import time, sleep
@@ -11,7 +18,14 @@ import json
 from config import HOST, PORT, IDLE_TIMEOUT, AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH, ADMIN_IPS
 
 
-web_site = Flask(__name__)
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
 
 
 clients = {}
@@ -53,25 +67,25 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 # FRONTEND START ------
 
 
-@web_site.route('/')
+@app.get('/', response_class=HTMLResponse)
 def index():
-    return render_template('index.html', len=len, clients=clients, completion=completion, progress_str=progress_str, total_pairs=total_pairs, eta=eta)
+    return templates.TemplateResponse('index.html', {"len": len, "clients": clients, "completion": completion, "progress_str": progress_str, "total_pairs": total_pairs, "eta": eta})
 
-@web_site.route('/install')
+@app.get('/install', response_class=HTMLResponse)
 def install():
-    return render_template('install.html')
+    return templates.TemplateResponse('install.html')
 
-@web_site.route('/leaderboard')
+@app.get('/leaderboard', response_class=HTMLResponse)
 def leaderboard_page():
-    return render_template('leaderboard.html', len=len, leaderboard=dict(sorted(leaderboard.items(), key=lambda x: x[1], reverse=True)))
+    return templates.TemplateResponse('leaderboard.html', {"len": len, "leaderboard": dict(sorted(leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
-@web_site.route('/stats')
+@app.get('/stats', response_class=HTMLResponse)
 def stats():
     return raw_text_stats.format(progress_str, completion, len(clients), total_pairs, len(open_jobs), len(pending_jobs), len(closed_jobs))
 
-@web_site.route('/data')
+@app.get('/data')
 def data():
-    return jsonify({
+    return {
         "completion_str": progress_str,
         "completion_float": completion,
         "total_connected_workers": len(clients),
@@ -81,36 +95,25 @@ def data():
         "closed_jobs": len(closed_jobs),
         "leaderboard": leaderboard,
         "eta": eta
-    })
+    }
 
 
 # ADMIN START ------
 
+@app.on_event("shutdown")
+def shutdown_event():
+    global closed_jobs, leaderboard
+    
+    with open("jobs/closed.json", "w") as f:
+        json.dump(closed_jobs, f)
+        
+    with open("jobs/leaderboard.json", "w") as f:
+        json.dump(leaderboard, f)
 
-@web_site.route('/admin/shutdown', methods=["GET"])
-def data():
-    if request.remote_addr in ADMIN_IPS:
-        global closed_jobs, leaderboard
-        
-        request.environ.get('werkzeug.server.shutdown', print)()
-        sleep(5)
-        
-        with open("jobs/closed.json", "w") as f:
-            json.dump(closed_jobs, f)
-        with open("jobs/leaderboard.json", "w") as f:
-            json.dump(leaderboard, f)
-        
-        exit()
-        return "Shutting down...", 200
-    else:
-        return "You are not an admin!", 403
-
-@web_site.route('/admin/ban-shard', methods=["POST"])
-def data():
-    if request.remote_addr in ADMIN_IPS:
+@app.post('/admin/ban-shard')
+def data(user_count : int, request : Request):
+    if request.client.host in ADMIN_IPS:
         global open_jobs, closed_jobs, pending_jobs
-        
-        user_count = request.json["count"]
         
         count = None
         index = None
@@ -138,19 +141,20 @@ def data():
         with open("jobs/closed.json", "w") as f:
             json.dump(closed_jobs, f)
         
-        return f"Done, removed shard {user_count}!", 200
+        return {"status": "success"}
     else:
-        return "You are not an admin!", 403
+        return {"status": "failed", "detail": "You are not an admin!"}
+    
     
 # API START ------
 
 
-@web_site.route('/api/new', methods=["GET"])
-def new():
+@app.get('/api/new')
+def new(nickname : str):
     global clients, open_jobs, pending_jobs
 
     if len(open_jobs) == 0 or len(open_jobs) == len(pending_jobs):
-        return "No new jobs available.", 503
+        raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
     uuid = str(uuid4())
@@ -160,27 +164,26 @@ def new():
         "progress": "Initialized",
         "jobs_completed": 0,
         "last_seen": time(),
-        "user_nickname": request.args["nickname"],
+        "user_nickname": nickname,
         "display_name": display_name
     }
 
     clients[uuid] = worker_data
 
-    return jsonify({"display_name": display_name, "token": uuid})
+    return {"display_name": display_name, "token": uuid}
 
 
-@web_site.route('/api/newJob', methods=["POST"])
-def newJob():
+@app.post('/api/newJob')
+def newJob(token : Optional[str] = None):
     global clients, pending_jobs, open_jobs
 
-    token = request.json.get("token", None)
     if not token:
-        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     if token not in clients:
-        return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     if len(open_jobs) == 0 or len(open_jobs) == len(pending_jobs):
-        return "No new jobs available.", 503
+        raise HTTPException(status_code=503, detail="No new jobs available.")
 
     c = 0
     shard = open_jobs[c]
@@ -203,41 +206,39 @@ def newJob():
     clients[token]["progress"] = "Recieved new job"
     clients[token]["last_seen"] = time()
 
-    return jsonify({"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]})
+    return {"url": shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
 
 
-@web_site.route('/api/jobCount', methods=["GET"])
+@app.get('/api/jobCount', response_class=PlainTextResponse)
 def jobCount():
     global open_jobs, pending_jobs
 
     return str(len(open_jobs) - len(pending_jobs))
 
 
-@web_site.route('/api/updateProgress', methods=["POST"])
-def updateProgress():
+@app.post('/api/updateProgress', response_class=PlainTextResponse)
+def updateProgress(token : Optional[str] = None, progress : str):
     global clients
     
-    token = request.json.get("token", None)
     if not token:
-        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     if token not in clients:
-        return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    clients[token]["progress"] = request.json["progress"]
+    clients[token]["progress"] = progress
     clients[token]["last_seen"] = time()
     
-    return "good", 200
+    return "success"
 
 
-@web_site.route('/api/bye', methods=["POST"])
-def bye():
+@app.post('/api/bye', response_class=PlainTextResponse)
+def bye(token : Optional[str] = None):
     global clients, pending_jobs
     
-    token = request.json.get("token", None)
     if not token:
-        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     if token not in clients:
-        return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     try:
         pending_jobs.remove(str(clients[token]["shard_number"]))
@@ -246,20 +247,17 @@ def bye():
 
     del clients[token]
     
-    return "good", 200
+    return "success"
 
 
-@web_site.route('/api/markAsDone', methods=["POST"])
-def markAsDone():
+@app.post('/api/markAsDone', response_class=PlainTextResponse)
+def markAsDone(token : Optional[str] = None, count : int):
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str, leaderboard, total_pairs
 
-    token = request.json.get("token", None)
     if not token:
-        return "You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.", 500
+        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     if token not in clients:
-        return "The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.", 500
-    
-    count = request.json["count"]
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     pending_jobs.remove(str(clients[token]["shard_number"]))
     closed_jobs.append(str(clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
@@ -279,7 +277,7 @@ def markAsDone():
     
     total_pairs += count
      
-    return "good", 200
+    return "success"
 
 
 def check_idle(timeout):
