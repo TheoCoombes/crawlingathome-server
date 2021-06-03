@@ -3,7 +3,7 @@
 <html>
 	<head>
 	<title>Crawling@Home Leaderboard</title>
-        <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', path='/bootstrap.min.css') }}" rel="stylesheet">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 	<meta http-equiv="refresh" content="15">
 	</head>
@@ -36,7 +36,6 @@
         {% endif %}
         <br><br>
             <a href="/">Back</a>
-
         <br><br>
 	</body>
 </html>
