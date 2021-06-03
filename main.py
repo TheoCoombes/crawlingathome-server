@@ -326,13 +326,23 @@ def calculate_eta():
 def save_jobs_leaderboard():
     global closed_jobs, leaderboard
     
+    a = len(closed_jobs)
+    b = sum([leaderboard[i][1] for i in leaderboard])
     while True:
-        with open("jobs/closed.json", "w") as f:
-            json.dump(closed_jobs, f)
-        with open("jobs/leaderboard.json", "w") as f:
-            json.dump(leaderboard, f)
-        
         sleep(300)
+        
+        x = len(closed_jobs)
+        if a != x:
+            with open("jobs/closed.json", "w") as f:
+                json.dump(closed_jobs, f)
+        y = sum([leaderboard[i][1] for i in leaderboard])
+        if b != y:
+            with open("jobs/leaderboard.json", "w") as f:
+                json.dump(leaderboard, f)
+        
+        a = x
+        b = y
+        
     
     
 Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
