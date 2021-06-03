@@ -217,7 +217,7 @@ def jobCount():
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
-def updateProgress(token : Optional[str] = None, progress : str):
+def updateProgress(progress : str, token : Optional[str] = None):
     global clients
     
     if not token:
@@ -251,7 +251,7 @@ def bye(token : Optional[str] = None):
 
 
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
-def markAsDone(token : Optional[str] = None, count : int):
+def markAsDone(count : int, token : Optional[str] = None):
     global clients, open_jobs, pending_jobs, closed_jobs, completion, progress_str, leaderboard, total_pairs
 
     if not token:
