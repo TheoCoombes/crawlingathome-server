@@ -12,4 +12,6 @@ AVERAGE_INTERVAL = 1800 # The interval for each measurement of the averages to t
 AVERAGE_DATASET_LENGTH = 50 # The maximum amount of measurements for the averages until older measurements are discarded.
 
 # ADMIN
-ADMIN_IP = "<YOUR IP HERE>"
+ADMIN_IPS = [
+  "<YOUR IP HERE>"
+]
