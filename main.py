@@ -19,7 +19,7 @@ import numpy as np
 import json
 
 from config import (
-    HOST, PORT,
+    HOST, PORT, WORKERS_COUNT
     IDLE_TIMEOUT,
     AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH,
     ADMIN_IPS
@@ -360,4 +360,6 @@ Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
 Thread(target=calculate_eta).start()
 Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if the server crashes
 
-run(app, host=HOST, port=PORT)
+
+if __name__ == "__main__":
+    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
