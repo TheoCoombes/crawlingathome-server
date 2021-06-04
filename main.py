@@ -79,7 +79,7 @@ async def stats():
     return raw_text_stats.format(progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
-@app.get('/workers/{worker}', response_class=HTMLResponse)
+@app.get('/worker/{worker}', response_class=HTMLResponse)
 async def worker_info(worker: str):
     w = None
     for token in s.clients:
