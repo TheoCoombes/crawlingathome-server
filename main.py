@@ -329,10 +329,8 @@ async def app_startup():
     asyncio.create_task(save_jobs_leaderboard())
 
   
-@app.on_event("shutdown")
+@app.on_event('shutdown')
 async def shutdown_event():
-    print("shutting down...")
-    
     with open("jobs/closed.json", "w") as f:
         json.dump(s.closed_jobs, f)
         
