@@ -82,11 +82,10 @@ async def stats():
 @app.get('/workers/{worker}', response_class=HTMLResponse)
 async def worker_info(worker: str):
     w = None
-    for token in c.clients:
-        if c.clients[token]["display_name"] == worker:
-            w = copy(c.clients[token])
+    for token in s.clients:
+        if s.clients[token]["display_name"] == worker:
+            w = copy(s.clients[token])
             break
-            
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
@@ -112,11 +111,10 @@ async def data():
 @app.get('/workers/{worker}/data')
 async def worker_data(worker: str):
     w = None
-    for token in c.clients:
-        if c.clients[token]["display_name"] == worker:
-            w = copy(c.clients[token])
+    for token in s.clients:
+        if s.clients[token]["display_name"] == worker:
+            w = copy(s.clients[token])
             break
-            
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
