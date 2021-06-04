@@ -220,7 +220,7 @@ async def newJob(inp: Optional[TokenInput] = None):
         
         count = count.astype(int)
     
-    s.pending_jobs.append(str(int))
+    s.pending_jobs.append(str(count))
 
     s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
