@@ -80,7 +80,7 @@ async def stats():
 
 
 @app.get('/worker/{worker}', response_class=HTMLResponse)
-async def worker_info(worker: str):
+async def worker_info(worker: str, request: Request):
     w = None
     for token in s.clients:
         if s.clients[token]["display_name"] == worker:
