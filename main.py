@@ -323,6 +323,12 @@ async def save_jobs_leaderboard():
         b = y
         
         
+@app.on_event('startup')
+async def app_startup():
+    asyncio.create_task(check_idle(IDLE_TIMEOUT))
+    asyncio.create_task(calculate_eta())
+    asyncio.create_task(save_jobs_leaderboard())
+        
         
 if __name__ == "__main__":
     
@@ -357,9 +363,5 @@ if __name__ == "__main__":
 
 
     app.eta = "N/A"
-    
-    asyncio.create_task(check_idle(IDLE_TIMEOUT))
-    asyncio.create_task(calculate_eta())
-    asyncio.create_task(save_jobs_leaderboard())
     
     run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
