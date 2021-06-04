@@ -139,7 +139,7 @@ def shutdown_event():
 @app.post('/admin/ban-shard')
 def data(inp: BanShardCountInput, request: Request):
     if request.client.host in ADMIN_IPS:
-        user_count = inp["count"]
+        user_count = inp.count
         count = None
         index = None
         for i, shard in enumerate(app.open_jobs):
@@ -202,7 +202,7 @@ def new(nickname: str):
 def newJob(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
-    token = inp["token"]
+    token = inp.token
     if token not in app.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
@@ -242,11 +242,11 @@ def jobCount():
 def updateProgress(inp: Optional[TokenProgressInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
-    token = inp["token"]
+    token = inp.token
     if token not in app.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    app.clients[token]["progress"] = inp["progress"]
+    app.clients[token]["progress"] = inp.progress
     app.clients[token]["last_seen"] = time()
     
     return "success"
@@ -256,7 +256,7 @@ def updateProgress(inp: Optional[TokenProgressInput] = None):
 def bye(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
-    token = inp["token"]
+    token = inp.token
     if token not in app.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
@@ -274,7 +274,7 @@ def bye(inp: Optional[TokenInput] = None):
 def markAsDone(inp: Optional[TokenCountInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
-    token = inp["token"]
+    token = inp.token
     if token not in app.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
@@ -291,11 +291,11 @@ def markAsDone(inp: Optional[TokenCountInput] = None):
 
     try:
         app.leaderboard[app.clients[token]["user_nickname"]][0] += 1
-        app.leaderboard[app.clients[token]["user_nickname"]][1] += inp["count"]
+        app.leaderboard[app.clients[token]["user_nickname"]][1] += inp.count
     except:
-        app.leaderboard[app.clients[token]["user_nickname"]] = [1, inp["count"]]
+        app.leaderboard[app.clients[token]["user_nickname"]] = [1, inp.count]
     
-    app.total_pairs += inp["count"]
+    app.total_pairs += inp.count
      
     return "success"
 
