@@ -24,11 +24,13 @@
             <strong>Currently Working on Shard:</strong> {{ '{:,}'.format(shard_number) }}
         {% endif %}
         <br><br>
-        <strong>Latest Progress Logged:</strong> "{{ progress }}"
+        <strong>Latest Progress Update:</strong> "{{ progress }}"
         <br><br>
         <strong>Total Shards Completed:</strong> {{ '{:,}'.format(jobs_completed) }}
         <br><br><br>
-        <i>NOTE: You can use '/worker/{{ display_name }}/data' for the raw JSON data.</i>
+	<a href="/">Back</a>
+	<br><br>
+	<i>NOTE: You can visit '<a href="/worker/{{ display_name }}/data">/worker/{{ display_name }}/data</a>' for the raw JSON data.</i>
         
         <script src="{{ url_for('static', path='/main.js') }}"></script>
 	</body>
