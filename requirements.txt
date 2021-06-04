@@ -3,4 +3,5 @@ starlette
 jinja2
 aiofiles
 uvicorn
+asyncio
 numpy
