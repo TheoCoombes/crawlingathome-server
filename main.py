@@ -336,4 +336,4 @@ async def app_startup():
         
         
 if __name__ == "__main__":
-    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
+    run("main:app", host=HOST, port=PORT) # ,workers=WORKERS_COUNT
