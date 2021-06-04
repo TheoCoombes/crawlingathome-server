@@ -1,0 +1,31 @@
+<!DOCTYPE HTML>
+
+<html>
+	<head>
+	<title>Crawling@Home</title>
+        <link href="{{ url_for('static', path='/bootstrap.min.css') }}" rel="stylesheet">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<meta http-equiv="refresh" content="15">
+	</head>
+	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
+        <h1>Crawling@Home Dashboard</h1>
+        <br><br>
+        <h2>Worker: {{ display_name }}</h2>
+        <br>
+        <strong>First Seen:</strong> <span class="timestamp">{{ first_seen }}</span>
+	    <br><br>
+        <strong>Last Seen:</strong> <span class="timestamp">{{ last_seen }}</span>
+        <br><br>
+        <strong>Owner's Nickname:</strong> {{ user_nickname }}
+	    <br><br>
+        <strong>Currently Working on Shard</strong> {{ '{:,}'.format(shard_number) }}
+        <br><br>
+        <strong>Latest Progress Logged:</strong> "{{ progress }}"
+        <br><br>
+        <strong>Total Shards Completed:</strong> {{ '{:,}'.format(jobs_completed) }}
+        <br><br><br>
+        <i>NOTE: You can use '/worker/{{ display_name }}/data' for the raw JSON data.</i>
+        
+        <script src="{{ url_for('static', path='/main.js') }}"></script>
+	</body>
+</html>
