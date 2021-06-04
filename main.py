@@ -90,7 +90,7 @@ async def worker_info(worker: str):
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
-        return return templates.TemplateResponse('worker.html', {"request": request, **w})
+        return templates.TemplateResponse('worker.html', {"request": request, **w})
     
 
 
