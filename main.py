@@ -12,7 +12,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from name import new as newName
 from datetime import timedelta
 from time import time, sleep
-from threading import Thread
 from uuid import uuid4
 from copy import copy
 import numpy as np
