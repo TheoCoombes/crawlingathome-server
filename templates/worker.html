@@ -18,7 +18,11 @@
         <br><br>
         <strong>Owner's Nickname:</strong> {{ user_nickname }}
 	    <br><br>
-        <strong>Currently Working on Shard</strong> {{ '{:,}'.format(shard_number) }}
+        {% if shard_number == "Waiting" %}
+            <strong>Currently Working on Shard:</strong> (not currently working on a shard)
+        {% else %}
+            <strong>Currently Working on Shard:</strong> {{ '{:,}'.format(shard_number) }}
+        {% endif %}
         <br><br>
         <strong>Latest Progress Logged:</strong> "{{ progress }}"
         <br><br>
