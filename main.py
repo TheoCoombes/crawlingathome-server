@@ -19,7 +19,7 @@ import numpy as np
 import json
 
 from config import (
-    HOST, PORT, WORKERS_COUNT
+    HOST, PORT, WORKERS_COUNT,
     IDLE_TIMEOUT,
     AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH,
     ADMIN_IPS
