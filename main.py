@@ -187,17 +187,21 @@ async def newJob(inp: Optional[TokenInput] = None):
     if shard["shard"] == 0:
         count -= 1
     
-    while shard in s.pending_jobs or str(count.astype(int)) in s.closed_jobs:
+    count = count.astype(int)
+    
+    while str(count) in s.pending_jobs or str(count) in s.closed_jobs:
         c += 1
         shard = s.open_jobs[c]
         
         count = (np.int64(shard["end_id"]) / 1000000) * 2
         if shard["shard"] == 0:
             count -= 1
+        
+        count = count.astype(int)
     
-    s.pending_jobs.append(str(count.astype(int)))
+    s.pending_jobs.append(str(int))
 
-    s.clients[token]["shard_number"] = count.astype(int)
+    s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
     s.clients[token]["last_seen"] = time()
 
