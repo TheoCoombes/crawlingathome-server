@@ -1,3 +1,6 @@
-Flask
-PyYAML
+fastapi
+starlette
+jinja2
+aiofiles
+uvicorn
 numpy

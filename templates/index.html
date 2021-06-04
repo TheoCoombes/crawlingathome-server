@@ -3,7 +3,7 @@
 <html>
 	<head>
 	<title>Crawling@Home</title>
-        <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+        <link href="{{ url_for('static', path='/bootstrap.min.css') }}" rel="stylesheet">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 	<meta http-equiv="refresh" content="15">
 	</head>
@@ -83,6 +83,6 @@
 	Server Version: v1.1.0 <br>
 	Latest Client Version: v1.1.0 <br><br>
         
-        <script src="{{ url_for('static', filename='main.js') }}"></script>
+        <script src="{{ url_for('static', path='/main.js') }}"></script>
 	</body>
 </html>
