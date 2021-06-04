@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import asyncio
 from uvicorn import run
 from typing import Optional
 from pydantic import BaseModel
@@ -32,39 +33,6 @@ templates = Jinja2Templates(directory="templates")
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
-
-
-app.clients = {}
-
-
-with open("jobs/shard_info.json", "r") as f:
-    app.shard_info = json.load(f)
-
-with open("jobs/open.json", "r") as f:
-    app.open_jobs = json.load(f)
-
-with open("jobs/closed.json", "r") as f:
-    app.closed_jobs = json.load(f)
-
-with open("jobs/leaderboard.json", "r") as f:
-    app.leaderboard = json.load(f)
-    
-app.pending_jobs = []
-
-app.total_jobs = app.shard_info["total_shards"]
-
-app.total_pairs = sum([app.leaderboard[i][1] for i in app.leaderboard])
-
-
-try:
-    app.completion = (len(app.closed_jobs) / app.total_jobs) * 100
-    app.progress_str = f"{len(app.closed_jobs):,} / {app.total_jobs:,}"
-except ZeroDivisionError:
-    app.completion = 0.00
-    app.progress_str = "0 / 0"
-
-
-app.eta = "N/A"
 
 
 raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Workers:</strong> {}<br><strong>Alt-Text Pairs Scraped:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many workers connected to the server to prevent slow loading times.</i>"    
@@ -214,7 +182,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if shard["shard"] == 0:
         count -= 1
     
-    while shard in app.pending_jobs or str(count) in app.closed_jobs:
+    while shard in app.pending_jobs or str(count.astype(int)) in app.closed_jobs:
         c += 1
         shard = app.open_jobs[c]
         
@@ -298,7 +266,8 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
     return "success"
 
 
-def check_idle(timeout):
+
+async def check_idle(timeout):
     while True:
         for client in list(app.clients.keys()):
             if (time() - app.clients[client]["last_seen"]) > timeout:
@@ -306,40 +275,41 @@ def check_idle(timeout):
                     app.pending_jobs.remove(str(app.clients[client]["shard_number"]))
                 except:
                     pass
-                
+
                 del app.clients[client]
 
-        sleep(30)
+        await asyncio.sleep(30)
 
         
-def calculate_eta():
+async def calculate_eta():
     dataset = []
     while True:
         start = len(app.closed_jobs)
-        sleep(AVERAGE_INTERVAL)
+        await asyncio.sleep(AVERAGE_INTERVAL)
         end = len(app.closed_jobs)
-        
+
         dataset.append(end - start)
         if len(dataset) > AVERAGE_DATASET_LENGTH:
             dataset.pop(0)
-        
+
         mean = sum(dataset) / len(dataset)
         mean_per_second = mean / AVERAGE_INTERVAL
         remaining = len(app.open_jobs) - len(app.pending_jobs)
-        
+
         try:
             length = remaining // mean_per_second
         except ZeroDivisionError:
             continue
-        
+
         app.eta = str(timedelta(seconds=length))
-    
-def save_jobs_leaderboard():
+
+        
+async def save_jobs_leaderboard():
     a = len(app.closed_jobs)
     b = sum([app.leaderboard[i][1] for i in app.leaderboard])
     while True:
-        sleep(300)
-        
+        await asyncio.sleep(300)
+
         x = len(app.closed_jobs)
         if a != x:
             with open("jobs/closed.json", "w") as f:
@@ -348,16 +318,48 @@ def save_jobs_leaderboard():
         if b != y:
             with open("jobs/leaderboard.json", "w") as f:
                 json.dump(app.leaderboard, f)
-        
+
         a = x
         b = y
         
-    
-    
-Thread(target=check_idle, args=(IDLE_TIMEOUT,)).start()
-Thread(target=calculate_eta).start()
-Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if the server crashes
-
-
+        
+        
 if __name__ == "__main__":
-    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT
+    
+    app.clients = {}
+
+
+    with open("jobs/shard_info.json", "r") as f:
+        app.shard_info = json.load(f)
+
+    with open("jobs/open.json", "r") as f:
+        app.open_jobs = json.load(f)
+
+    with open("jobs/closed.json", "r") as f:
+        app.closed_jobs = json.load(f)
+
+    with open("jobs/leaderboard.json", "r") as f:
+        app.leaderboard = json.load(f)
+
+    app.pending_jobs = []
+
+    app.total_jobs = app.shard_info["total_shards"]
+
+    app.total_pairs = sum([app.leaderboard[i][1] for i in app.leaderboard])
+
+
+    try:
+        app.completion = (len(app.closed_jobs) / app.total_jobs) * 100
+        app.progress_str = f"{len(app.closed_jobs):,} / {app.total_jobs:,}"
+    except ZeroDivisionError:
+        app.completion = 0.00
+        app.progress_str = "0 / 0"
+
+
+    app.eta = "N/A"
+    
+    asyncio.create_task(check_idle(IDLE_TIMEOUT))
+    asyncio.create_task(calculate_eta())
+    asyncio.create_task(save_jobs_leaderboard())
+    
+    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
