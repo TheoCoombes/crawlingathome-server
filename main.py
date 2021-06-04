@@ -35,11 +35,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request, exc):
-    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
-
-
 raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Workers:</strong> {}<br><strong>Alt-Text Pairs Scraped:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many workers connected to the server to prevent slow loading times.</i>"    
 
 
@@ -96,16 +91,6 @@ async def data():
 
         
 # ADMIN START ------
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    print("shutting down...")
-    
-    with open("jobs/closed.json", "w") as f:
-        json.dump(s.closed_jobs, f)
-        
-    with open("jobs/leaderboard.json", "w") as f:
-        json.dump(s.leaderboard, f)
 
 @app.post('/admin/ban-shard')
 async def data(inp: BanShardCountInput, request: Request):
@@ -275,6 +260,8 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
     return "success"
 
 
+# TIMERS START ------
+
 
 async def check_idle(timeout):
     while True:
@@ -331,13 +318,35 @@ async def save_jobs_leaderboard():
         a = x
         b = y
         
-        
+
+# FASTAPI UTILITIES START ------ 
+    
+    
 @app.on_event('startup')
 async def app_startup():
     asyncio.create_task(check_idle(IDLE_TIMEOUT))
     asyncio.create_task(calculate_eta())
     asyncio.create_task(save_jobs_leaderboard())
+
+  
+@app.on_event("shutdown")
+async def shutdown_event():
+    print("shutting down...")
+    
+    with open("jobs/closed.json", "w") as f:
+        json.dump(s.closed_jobs, f)
         
+    with open("jobs/leaderboard.json", "w") as f:
+        json.dump(s.leaderboard, f)
+
         
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
+    
+    
+# ------------------------------ 
+    
+    
 if __name__ == "__main__":
-    run("main:app", host=HOST, port=PORT) # ,workers=WORKERS_COUNT
+    run(app, host=HOST, port=PORT) # ,workers=WORKERS_COUNT
