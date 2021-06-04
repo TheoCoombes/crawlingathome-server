@@ -38,7 +38,7 @@
                 <tbody>
                     {% for i in clients %}
                         <tr>
-                            <th scope="row">{{ clients[i]["display_name"] }}</th>
+                            <th scope="row">{{ clients[i]["display_name"] }} <a href="/worker/{{ clients[i]['display_name'] }}">↗</a></th>
 			    {% if clients[i]["shard_number"] == "Waiting" %}
 				<td><i>Waiting</i></td>
 			    {% else %}
