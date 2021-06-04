@@ -93,24 +93,24 @@ class BanShardCountInput(BaseModel):
 
 
 @app.get('/', response_class=HTMLResponse)
-def index(request: Request):
+async def index(request: Request):
     return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": app.clients, "completion": app.completion, "progress_str": app.progress_str, "total_pairs": app.total_pairs, "eta": app.eta})
 
 @app.get('/install', response_class=HTMLResponse)
-def install(request: Request):
+async def install(request: Request):
     return templates.TemplateResponse('install.html', {"request": request})
 
 @app.get('/leaderboard', response_class=HTMLResponse)
-def leaderboard_page(request: Request):
+async def leaderboard_page(request: Request):
     return templates.TemplateResponse('leaderboard.html', {"request": request, "len": len, "leaderboard": dict(sorted(app.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 @app.get('/stats', response_class=HTMLResponse)
-def stats():
+async def stats():
     return raw_text_stats.format(progress_str, app.completion, len(app.clients), app.total_pairs, len(app.open_jobs), len(app.pending_jobs), len(app.closed_jobs))
 
 
 @app.get('/data')
-def data():
+async def data():
     return {
         "completion_str": app.progress_str,
         "completion_float": app.completion,
@@ -127,7 +127,7 @@ def data():
 # ADMIN START ------
 
 @app.on_event("shutdown")
-def shutdown_event():
+async def shutdown_event():
     print("shutting down...")
     
     with open("jobs/closed.json", "w") as f:
@@ -137,7 +137,7 @@ def shutdown_event():
         json.dump(app.leaderboard, f)
 
 @app.post('/admin/ban-shard')
-def data(inp: BanShardCountInput, request: Request):
+async def data(inp: BanShardCountInput, request: Request):
     if request.client.host in ADMIN_IPS:
         user_count = inp.count
         count = None
@@ -175,7 +175,7 @@ def data(inp: BanShardCountInput, request: Request):
 
 
 @app.get('/api/new')
-def new(nickname: str):
+async def new(nickname: str):
     if len(app.open_jobs) == 0 or len(app.open_jobs) == len(app.pending_jobs):
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
@@ -199,7 +199,7 @@ def new(nickname: str):
 
 
 @app.post('/api/newJob')
-def newJob(inp: Optional[TokenInput] = None):
+async def newJob(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
@@ -234,12 +234,12 @@ def newJob(inp: Optional[TokenInput] = None):
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
-def jobCount():
+async def jobCount():
     return str(len(app.open_jobs) - (len(app.pending_jobs) + len(app.closed_jobs)))
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
-def updateProgress(inp: Optional[TokenProgressInput] = None):
+async def updateProgress(inp: Optional[TokenProgressInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
@@ -253,7 +253,7 @@ def updateProgress(inp: Optional[TokenProgressInput] = None):
 
 
 @app.post('/api/bye', response_class=PlainTextResponse)
-def bye(inp: Optional[TokenInput] = None):
+async def bye(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
@@ -271,7 +271,7 @@ def bye(inp: Optional[TokenInput] = None):
 
 
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
-def markAsDone(inp: Optional[TokenCountInput] = None):
+async def markAsDone(inp: Optional[TokenCountInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
@@ -362,4 +362,4 @@ Thread(target=save_jobs_leaderboard).start() # Helps recover completed jobs if t
 
 
 if __name__ == "__main__":
-    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
+    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT
