@@ -12,8 +12,6 @@ from name import new as newName
 from datetime import timedelta
 from time import time, sleep
 from threading import Thread
-from copy import deepcopy
-from pathlib import Path
 from uuid import uuid4
 import numpy as np
 import json
