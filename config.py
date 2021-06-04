@@ -3,7 +3,7 @@
 # SERVER
 HOST = "0.0.0.0"
 PORT = 80
-PROCESS_COUNT = 4 # Amount of CPU cores to dedicate to the server.
+WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server.
 
 # WORKER CONFIG
 IDLE_TIMEOUT = 5400 # The interval until a worker is kicked for being idle. (90 minutes)
