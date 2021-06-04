@@ -331,37 +331,4 @@ async def app_startup():
         
         
 if __name__ == "__main__":
-    
-    app.clients = {}
-
-
-    with open("jobs/shard_info.json", "r") as f:
-        app.shard_info = json.load(f)
-
-    with open("jobs/open.json", "r") as f:
-        app.open_jobs = json.load(f)
-
-    with open("jobs/closed.json", "r") as f:
-        app.closed_jobs = json.load(f)
-
-    with open("jobs/leaderboard.json", "r") as f:
-        app.leaderboard = json.load(f)
-
-    app.pending_jobs = []
-
-    app.total_jobs = app.shard_info["total_shards"]
-
-    app.total_pairs = sum([app.leaderboard[i][1] for i in app.leaderboard])
-
-
-    try:
-        app.completion = (len(app.closed_jobs) / app.total_jobs) * 100
-        app.progress_str = f"{len(app.closed_jobs):,} / {app.total_jobs:,}"
-    except ZeroDivisionError:
-        app.completion = 0.00
-        app.progress_str = "0 / 0"
-
-
-    app.eta = "N/A"
-    
     run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
