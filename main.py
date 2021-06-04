@@ -108,7 +108,7 @@ async def data():
     }
 
 
-@app.get('/workers/{worker}/data')
+@app.get('/worker/{worker}/data')
 async def worker_data(worker: str):
     w = None
     for token in s.clients:
