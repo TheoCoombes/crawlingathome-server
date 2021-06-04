@@ -17,12 +17,17 @@ from uuid import uuid4
 import numpy as np
 import json
 
+from store import DataLoader
+
 from config import (
     HOST, PORT, WORKERS_COUNT,
     IDLE_TIMEOUT,
     AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH,
     ADMIN_IPS
 )
+
+
+s = DataLoader()
 
 
 app = FastAPI()
@@ -60,7 +65,7 @@ class BanShardCountInput(BaseModel):
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": app.clients, "completion": app.completion, "progress_str": app.progress_str, "total_pairs": app.total_pairs, "eta": app.eta})
+    return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
@@ -68,25 +73,25 @@ async def install(request: Request):
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    return templates.TemplateResponse('leaderboard.html', {"request": request, "len": len, "leaderboard": dict(sorted(app.leaderboard.items(), key=lambda x: x[1], reverse=True))})
+    return templates.TemplateResponse('leaderboard.html', {"request": request, "len": len, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 @app.get('/stats', response_class=HTMLResponse)
 async def stats():
-    return raw_text_stats.format(progress_str, app.completion, len(app.clients), app.total_pairs, len(app.open_jobs), len(app.pending_jobs), len(app.closed_jobs))
+    return raw_text_stats.format(progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
 @app.get('/data')
 async def data():
     return {
-        "completion_str": app.progress_str,
-        "completion_float": app.completion,
-        "total_connected_workers": len(app.clients),
-        "total_pairs_scraped": app.total_pairs,
-        "open_jobs": len(app.open_jobs),
-        "pending_jobs": len(app.pending_jobs),
-        "closed_jobs": len(app.closed_jobs),
-        "leaderboard": app.leaderboard,
-        "eta": app.eta
+        "completion_str": s.progress_str,
+        "completion_float": s.completion,
+        "total_connected_workers": len(s.clients),
+        "total_pairs_scraped": s.total_pairs,
+        "open_jobs": len(s.open_jobs),
+        "pending_jobs": len(s.pending_jobs),
+        "closed_jobs": len(s.closed_jobs),
+        "leaderboard": s.leaderboard,
+        "eta": s.eta
     }
 
         
@@ -97,10 +102,10 @@ async def shutdown_event():
     print("shutting down...")
     
     with open("jobs/closed.json", "w") as f:
-        json.dump(app.closed_jobs, f)
+        json.dump(s.closed_jobs, f)
         
     with open("jobs/leaderboard.json", "w") as f:
-        json.dump(app.leaderboard, f)
+        json.dump(s.leaderboard, f)
 
 @app.post('/admin/ban-shard')
 async def data(inp: BanShardCountInput, request: Request):
@@ -108,7 +113,7 @@ async def data(inp: BanShardCountInput, request: Request):
         user_count = inp.count
         count = None
         index = None
-        for i, shard in enumerate(app.open_jobs):
+        for i, shard in enumerate(s.open_jobs):
             count = (np.int64(shard["end_id"]) / 1000000) * 2
             if shard["shard"] == 0:
                 count -= 1
@@ -116,21 +121,21 @@ async def data(inp: BanShardCountInput, request: Request):
             if int(count) == user_count:
                 index = i
                 try:
-                    app.pending_jobs.remove(str(count))
+                    s.pending_jobs.remove(str(count))
                 except:
                     pass
                 try:
-                    app.closed_jobs.remove(str(count))
+                    s.closed_jobs.remove(str(count))
                 except:
                     pass
                 break
          
-        del app.open_jobs[index]
+        del s.open_jobs[index]
         
         with open("jobs/open.json", "w") as f:
-            json.dump(app.open_jobs, f)
+            json.dump(s.open_jobs, f)
         with open("jobs/closed.json", "w") as f:
-            json.dump(app.closed_jobs, f)
+            json.dump(s.closed_jobs, f)
         
         return {"status": "success"}
     else:
@@ -142,7 +147,7 @@ async def data(inp: BanShardCountInput, request: Request):
 
 @app.get('/api/new')
 async def new(nickname: str):
-    if len(app.open_jobs) == 0 or len(app.open_jobs) == len(app.pending_jobs):
+    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
@@ -159,7 +164,7 @@ async def new(nickname: str):
         "display_name": display_name
     }
 
-    app.clients[uuid] = worker_data
+    s.clients[uuid] = worker_data
 
     return {"display_name": display_name, "token": uuid}
 
@@ -169,39 +174,39 @@ async def newJob(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
-    if token not in app.clients:
+    if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if len(app.open_jobs) == 0 or len(app.open_jobs) == len(app.pending_jobs):
+    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
         raise HTTPException(status_code=503, detail="No new jobs available.")
 
     c = 0
-    shard = app.open_jobs[c]
+    shard = s.open_jobs[c]
     
     count = (np.int64(shard["end_id"]) / 1000000) * 2
     if shard["shard"] == 0:
         count -= 1
     
-    while shard in app.pending_jobs or str(count.astype(int)) in app.closed_jobs:
+    while shard in s.pending_jobs or str(count.astype(int)) in s.closed_jobs:
         c += 1
-        shard = app.open_jobs[c]
+        shard = s.open_jobs[c]
         
         count = (np.int64(shard["end_id"]) / 1000000) * 2
         if shard["shard"] == 0:
             count -= 1
     
-    app.pending_jobs.append(str(count.astype(int)))
+    s.pending_jobs.append(str(count.astype(int)))
 
-    app.clients[token]["shard_number"] = count.astype(int)
-    app.clients[token]["progress"] = "Recieved new job"
-    app.clients[token]["last_seen"] = time()
+    s.clients[token]["shard_number"] = count.astype(int)
+    s.clients[token]["progress"] = "Recieved new job"
+    s.clients[token]["last_seen"] = time()
 
-    return {"url": app.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
+    return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
 async def jobCount():
-    return str(len(app.open_jobs) - (len(app.pending_jobs) + len(app.closed_jobs)))
+    return str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
@@ -209,11 +214,11 @@ async def updateProgress(inp: Optional[TokenProgressInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
-    if token not in app.clients:
+    if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    app.clients[token]["progress"] = inp.progress
-    app.clients[token]["last_seen"] = time()
+    s.clients[token]["progress"] = inp.progress
+    s.clients[token]["last_seen"] = time()
     
     return "success"
 
@@ -223,15 +228,15 @@ async def bye(inp: Optional[TokenInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
-    if token not in app.clients:
+    if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     try:
-        app.pending_jobs.remove(str(app.clients[token]["shard_number"]))
+        s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     except:
         pass
 
-    del app.clients[token]
+    del s.clients[token]
     
     return "success"
 
@@ -241,27 +246,27 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
     if not inp:
         raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
     token = inp.token
-    if token not in app.clients:
+    if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
         
-    app.pending_jobs.remove(str(app.clients[token]["shard_number"]))
-    app.closed_jobs.append(str(app.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
+    s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
     
-    app.completion = (len(app.closed_jobs) / app.total_jobs) * 100
-    app.progress_str = f"{len(app.closed_jobs):,} / {app.total_jobs:,}"
+    s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+    s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
 
-    app.clients[token]["progress"] = "Completed Job"
-    app.clients[token]["jobs_completed"] += 1
-    app.clients[token]["last_seen"] = time()
+    s.clients[token]["progress"] = "Completed Job"
+    s.clients[token]["jobs_completed"] += 1
+    s.clients[token]["last_seen"] = time()
 
     try:
-        app.leaderboard[app.clients[token]["user_nickname"]][0] += 1
-        app.leaderboard[app.clients[token]["user_nickname"]][1] += inp.count
+        s.leaderboard[s.clients[token]["user_nickname"]][0] += 1
+        s.leaderboard[s.clients[token]["user_nickname"]][1] += inp.count
     except:
-        app.leaderboard[app.clients[token]["user_nickname"]] = [1, inp.count]
+        s.leaderboard[s.clients[token]["user_nickname"]] = [1, inp.count]
     
-    app.total_pairs += inp.count
+    s.total_pairs += inp.count
      
     return "success"
 
@@ -269,14 +274,14 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
 
 async def check_idle(timeout):
     while True:
-        for client in list(app.clients.keys()):
-            if (time() - app.clients[client]["last_seen"]) > timeout:
+        for client in list(s.clients.keys()):
+            if (time() - s.clients[client]["last_seen"]) > timeout:
                 try:
-                    app.pending_jobs.remove(str(app.clients[client]["shard_number"]))
+                    s.pending_jobs.remove(str(s.clients[client]["shard_number"]))
                 except:
                     pass
 
-                del app.clients[client]
+                del s.clients[client]
 
         await asyncio.sleep(30)
 
@@ -284,9 +289,9 @@ async def check_idle(timeout):
 async def calculate_eta():
     dataset = []
     while True:
-        start = len(app.closed_jobs)
+        start = len(s.closed_jobs)
         await asyncio.sleep(AVERAGE_INTERVAL)
-        end = len(app.closed_jobs)
+        end = len(s.closed_jobs)
 
         dataset.append(end - start)
         if len(dataset) > AVERAGE_DATASET_LENGTH:
@@ -294,30 +299,30 @@ async def calculate_eta():
 
         mean = sum(dataset) / len(dataset)
         mean_per_second = mean / AVERAGE_INTERVAL
-        remaining = len(app.open_jobs) - len(app.pending_jobs)
+        remaining = len(s.open_jobs) - len(s.pending_jobs)
 
         try:
             length = remaining // mean_per_second
         except ZeroDivisionError:
             continue
 
-        app.eta = str(timedelta(seconds=length))
+        s.eta = str(timedelta(seconds=length))
 
         
 async def save_jobs_leaderboard():
-    a = len(app.closed_jobs)
-    b = sum([app.leaderboard[i][1] for i in app.leaderboard])
+    a = len(s.closed_jobs)
+    b = sum([s.leaderboard[i][1] for i in s.leaderboard])
     while True:
         await asyncio.sleep(300)
 
-        x = len(app.closed_jobs)
+        x = len(s.closed_jobs)
         if a != x:
             with open("jobs/closed.json", "w") as f:
-                json.dump(app.closed_jobs, f)
-        y = sum([app.leaderboard[i][1] for i in app.leaderboard])
+                json.dump(s.closed_jobs, f)
+        y = sum([s.leaderboard[i][1] for i in s.leaderboard])
         if b != y:
             with open("jobs/leaderboard.json", "w") as f:
-                json.dump(app.leaderboard, f)
+                json.dump(s.leaderboard, f)
 
         a = x
         b = y
