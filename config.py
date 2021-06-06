@@ -9,8 +9,8 @@ WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server.
 IDLE_TIMEOUT = 5400 # The interval until a worker is kicked for being idle. (90 minutes)
 
 # ETA CALCULATION
-AVERAGE_INTERVAL = 1800 # The interval for each measurement of the averages to take place. (30 minutes)
-AVERAGE_DATASET_LENGTH = 50 # The maximum amount of measurements for the averages until older measurements are discarded.
+AVERAGE_INTERVAL = 900 # The interval for each measurement of the averages to take place. (15 minutes)
+AVERAGE_DATASET_LENGTH = 10 # The maximum amount of measurements for the averages until older measurements are discarded.
 
 # ADMIN
 ADMIN_IPS = [
