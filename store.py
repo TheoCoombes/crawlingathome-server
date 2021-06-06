@@ -24,6 +24,10 @@ class DataLoader:
         self.total_jobs = self.shard_info["total_shards"]
 
         self.total_pairs = sum([self.leaderboard[i][1] for i in self.leaderboard])
+        
+        self.worker_cache = {}
+        
+        self.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
 
         try:
             self.completion = (len(self.closed_jobs) / self.total_jobs) * 100
