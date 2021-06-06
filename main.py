@@ -35,6 +35,7 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 # REQUEST INPUTS START ------
 
+
 class TokenInput(BaseModel):
     token: str
 
@@ -157,7 +158,7 @@ async def data(inp: BanShardCountInput, request: Request):
 
 @app.get('/api/new')
 async def new(nickname: str):
-    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
+    if s.jobs_remaining == 0:
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
@@ -187,7 +188,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
+    if s.jobs_remaining == 0:
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     if s.clients[token]["shard_number"] != "Waiting":
@@ -216,6 +217,7 @@ async def newJob(inp: Optional[TokenInput] = None):
         count = count.astype(int)
     
     s.pending_jobs.append(str(count))
+    s.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
 
     s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
@@ -226,7 +228,7 @@ async def newJob(inp: Optional[TokenInput] = None):
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
 async def jobCount():
-    return str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+    return str(s.jobs_remaining)
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
@@ -254,6 +256,7 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
         
     s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    s.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
     
     s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
     s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
