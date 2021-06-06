@@ -3,7 +3,7 @@
 # SERVER
 HOST = "0.0.0.0"
 PORT = 80
-WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server.
+WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server. [NOT CURRENTLY WORKING]
 
 # WORKER CONFIG
 IDLE_TIMEOUT = 5400 # The interval until a worker is kicked for being idle. (90 minutes)
@@ -16,3 +16,6 @@ AVERAGE_DATASET_LENGTH = 10 # The maximum amount of measurements for the average
 ADMIN_IPS = [
   "<YOUR IP HERE>"
 ]
+
+# CACHE
+MAX_WORKER_CACHE_SIZE = 250 # The max amount of {nickname: token} caches stored before early ones are erased. (for looking up workers' details)
