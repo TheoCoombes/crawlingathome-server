@@ -13,7 +13,6 @@ from name import new as newName
 from datetime import timedelta
 from time import time, sleep
 from uuid import uuid4
-from copy import copy
 import numpy as np
 import json
 
@@ -76,16 +75,21 @@ async def stats():
 
 @app.get('/worker/{worker}', response_class=HTMLResponse)
 async def worker_info(worker: str, request: Request):
-    w = None
-    for token in s.clients:
-        if s.clients[token]["display_name"] == worker:
-            w = copy(s.clients[token])
-            break
-    if not w:
-        raise HTTPException(status_code=500, detail="Worker not found.")
+    if worker in s.worker_cache:
+        w = s.worker_cache[worker]
     else:
-        return templates.TemplateResponse('worker.html', {"request": request, **w})
-    
+        w = None
+        for token in s.clients:
+            if s.clients[token]["display_name"] == worker:
+                w = s.clients[token]
+                s.worker_cache[worker] = token
+                if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
+                    s.worker_cache.pop(0)
+                break
+        if not w:
+            raise HTTPException(status_code=500, detail="Worker not found.")
+        else:
+            return templates.TemplateResponse('worker.html', {"request": request, **w})
 
 
 @app.get('/data')
@@ -105,10 +109,16 @@ async def data():
 
 @app.get('/worker/{worker}/data')
 async def worker_data(worker: str):
+    if worker in s.worker_cache:
+        return s.worker_cache[worker]
+    
     w = None
     for token in s.clients:
         if s.clients[token]["display_name"] == worker:
-            w = copy(s.clients[token])
+            w = s.clients[token]
+            s.worker_cache[worker] = token
+            if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
+                s.worker_cache.pop(0)
             break
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
@@ -158,7 +168,7 @@ async def data(inp: BanShardCountInput, request: Request):
 
 @app.get('/api/new')
 async def new(nickname: str):
-    if s.jobs_remaining == 0:
+    if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
@@ -188,7 +198,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if s.jobs_remaining == 0:
+    if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     if s.clients[token]["shard_number"] != "Waiting":
@@ -204,7 +214,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if shard["shard"] == 0:
         count -= 1
     
-    count = count.astype(int)
+    count = int(count)
     
     while str(count) in s.pending_jobs or str(count) in s.closed_jobs:
         c += 1
@@ -214,10 +224,10 @@ async def newJob(inp: Optional[TokenInput] = None):
         if shard["shard"] == 0:
             count -= 1
         
-        count = count.astype(int)
+        count = int(count)
     
     s.pending_jobs.append(str(count))
-    s.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
+    s.jobs_remaining = str(len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs)))
 
     s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
@@ -256,7 +266,7 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
         
     s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
-    s.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
+    s.jobs_remaining = str(len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs)))
     
     s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
     s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
