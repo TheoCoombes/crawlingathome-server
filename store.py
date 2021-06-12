@@ -59,7 +59,6 @@ class DataLoader:
         self.completion = self.manager.completion()
         self.progress_str = self.manager.progress_str()
         self.eta = self.manager.eta()
-        self.shard_info = self.manager.shard_info()
 
     def _load(self):
         self.clients = {}
