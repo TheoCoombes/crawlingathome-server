@@ -21,9 +21,12 @@ from store import DataLoader
 from config import *
 
 
-s = DataLoader()
+if __name__ == "__main__":
+    s = DataLoader(host=True)
+else:
+    s = DataLoader(host=False)
 
-
+    
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -238,7 +241,7 @@ async def newJob(inp: Optional[TokenInput] = None):
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
 async def jobCount():
-    return str(s.jobs_remaining)
+    return s.jobs_remaining
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
@@ -369,13 +372,17 @@ async def save_jobs_leaderboard():
     
 @app.on_event('startup')
 async def app_startup():
-    asyncio.create_task(check_idle(IDLE_TIMEOUT))
-    asyncio.create_task(calculate_eta())
-    asyncio.create_task(save_jobs_leaderboard())
+    if __name__ == "__main__":
+        asyncio.create_task(check_idle(IDLE_TIMEOUT))
+        asyncio.create_task(calculate_eta())
+        asyncio.create_task(save_jobs_leaderboard())
 
   
 @app.on_event('shutdown')
 async def shutdown_event():
+    if __name__ == "__main__":
+        s.manager.shutdown()
+    
     with open("jobs/closed.json", "w") as f:
         json.dump(s.closed_jobs, f)
         
@@ -386,10 +393,10 @@ async def shutdown_event():
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
-    
-    
+
+
 # ------------------------------ 
-    
-    
+
+
 if __name__ == "__main__":
-    run(app, host=HOST, port=PORT) # ,workers=WORKERS_COUNT
+    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
