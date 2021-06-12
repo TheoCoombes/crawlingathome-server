@@ -1,4 +1,5 @@
 fastapi
+aiocache
 starlette
 jinja2
 aiofiles
