@@ -21,11 +21,11 @@ from store import DataLoader
 from config import *
 
 
-if __name__ == "__main__":
-    s = DataLoader(host=True)
-else:
-    sleep(180)
-    s = DataLoader(host=False)
+#if __name__ == "__main__":
+s = DataLoader()
+#else:
+# sleep(180)
+#   s = DataLoader(host=False)
 
     
 app = FastAPI()
@@ -400,4 +400,4 @@ async def http_exception_handler(request, exc):
 
 
 if __name__ == "__main__":
-    run("main:app", host=HOST, port=PORT, workers=WORKERS_COUNT)
+    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT [multiprocessing was reverted for v2.1.0, will be added at a later date TBD]
