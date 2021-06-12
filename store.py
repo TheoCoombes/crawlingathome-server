@@ -6,12 +6,15 @@ class Manager(SyncManager):
     pass
 
 class DataLoader:
-    def __init__(self, host=False):  
-        if host:
-            self._load()
-            self._host()
-        else:
-            self._connect()
+    def __init__(self, host=False):
+        self._load()
+        
+        #if host:
+        #    self._load()
+        #    self._host()
+        #else:
+        #    self._connect()
+    
     
     def _host(self):
         Manager.register("shard_info", self.shard_info)
