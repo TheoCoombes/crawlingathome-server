@@ -24,6 +24,7 @@ from config import *
 if __name__ == "__main__":
     s = DataLoader(host=True)
 else:
+    sleep(180)
     s = DataLoader(host=False)
 
     
