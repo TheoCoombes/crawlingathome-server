@@ -1,5 +1,5 @@
 from multiprocessing.managers import SyncManager
-from .config import STORE_PASSWORD, STORE_PORT
+from config import STORE_PASSWORD, STORE_PORT
 import json
 
 class Manager(SyncManager):
