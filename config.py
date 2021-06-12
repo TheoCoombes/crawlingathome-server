@@ -5,6 +5,10 @@ HOST = "0.0.0.0"
 PORT = 80
 WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server. [NOT CURRENTLY WORKING]
 
+# STORE CONFIG
+STORE_PASSWORD = "password" # Password used to access the store.
+STORE_PORT = 5000 # Store port.
+
 # WORKER CONFIG
 IDLE_TIMEOUT = 5400 # The interval until a worker is kicked for being idle. (90 minutes)
 
