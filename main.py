@@ -383,11 +383,11 @@ async def shutdown_event():
     if __name__ == "__main__":
         s.manager.shutdown()
     
-    with open("jobs/closed.json", "w") as f:
-        json.dump(s.closed_jobs, f)
-        
-    with open("jobs/leaderboard.json", "w") as f:
-        json.dump(s.leaderboard, f)
+        with open("jobs/closed.json", "w") as f:
+            json.dump(s.closed_jobs, f)
+
+        with open("jobs/leaderboard.json", "w") as f:
+            json.dump(s.leaderboard, f)
 
         
 @app.exception_handler(StarletteHTTPException)
