@@ -58,8 +58,8 @@ class BanShardCountInput(BaseModel):
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
+async def index(request: Request, all: Optional[bool] = False):
+    return templates.TemplateResponse('index.html', {"request": request, "all": all, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
 
 
 @app.get('/install', response_class=HTMLResponse)
@@ -74,7 +74,7 @@ async def leaderboard_page(request: Request):
 
 @app.get('/stats', response_class=HTMLResponse)
 async def stats():
-    return raw_text_stats.format(progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
+    return raw_text_stats.format(s.progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
 @app.get('/worker/{worker}', response_class=HTMLResponse)
