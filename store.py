@@ -7,13 +7,11 @@ class Manager(SyncManager):
 
 class DataLoader:
     def __init__(self, host=False):
-        self._load()
-        
-        #if host:
-        #    self._load()
-        #    self._host()
-        #else:
-        #    self._connect()
+        if host:
+            self._load()
+            self._host()
+        else:
+            self._connect()
     
     
     def _host(self):
