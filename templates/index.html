@@ -21,7 +21,7 @@
 	<br><br>
 	<strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Running Jobs</h2>
+        <h2>Connected Workers ({{ "{0:.2f}".format(len(clients)) }})</h2>
         <br>
         {% if len(clients) != 0 %}
             <table class="table">
@@ -36,22 +36,42 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for i in clients %}
-                        <tr>
-                            <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
-			    {% if clients[i]["shard_number"] == "Waiting" %}
-				<td><i>Waiting</i></td>
-			    {% else %}
-                            	<td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
-			    {% endif %}
-                            <td>{{ clients[i]["progress"] }}</td>
-                            <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
-                            <td>{{ clients[i]["user_nickname"] }}</td>
-                            <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
-                        </tr>
+                    {% if not all %}
+                            {% for i in clients[:150] %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
+                                    {% if clients[i]["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ clients[i]["progress"] }}</td>
+                                    <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
+                                    <td>{{ clients[i]["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
+                                </tr>
+                            {% endfor %}
+                    {% else %}
+                        {% for i in clients %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
+                                    {% if clients[i]["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ clients[i]["progress"] }}</td>
+                                    <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
+                                    <td>{{ clients[i]["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
+                                </tr>
                     {% endfor %}
                 </tbody>
             </table>
+	    <br>
+            {% if len(clients) > 150 and not all %}
+                <i>Limited view to 150 workers. <a href="/?all">View All</a></i>
+            {% endif %}
         {% elif completion == 100.0 %}
             <p>All jobs have been completed, thank you!</p>
         {% else %}
