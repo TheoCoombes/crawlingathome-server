@@ -231,7 +231,7 @@ async def newJob(inp: Optional[TokenInput] = None):
         count = int(count)
     
     s.pending_jobs.append(str(count))
-    s.jobs_remaining = str(len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs)))
+    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
 
     s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
@@ -270,7 +270,7 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
         
     s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
-    s.jobs_remaining = str(len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs)))
+    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
     
     s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
     s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
