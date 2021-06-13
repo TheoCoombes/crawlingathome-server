@@ -28,7 +28,7 @@ class DataLoader:
         Manager.register("progress_str", self.progress_str)
         Manager.register("eta", self.eta)
         
-        self.manager = Manager(("127.0.0.1", STORE_PORT), authkey=STORE_PASSWORD.encode())
+        self.manager = Manager(("0.0.0.0", STORE_PORT), authkey=STORE_PASSWORD.encode())
         self.manager.start()
     
     def _connect(self):
