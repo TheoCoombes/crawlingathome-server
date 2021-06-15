@@ -51,7 +51,18 @@ class TokenCountInput(BaseModel):
     count: int
 
 class BanShardCountInput(BaseModel):
+    password: str
     count: int
+
+class LookupWatInput(BaseModel):
+    password: str
+    url: str
+
+class MarkAsDoneInput(BaseModel):
+    password: str
+    shards: list
+    count: int
+    nickname: str
         
 
 # FRONTEND START ------
@@ -134,7 +145,7 @@ async def worker_data(worker: str):
 
 @app.post('/admin/ban-shard')
 async def data(inp: BanShardCountInput, request: Request):
-    if request.client.host in ADMIN_IPS:
+    if inp.password == ADMIN_PASSWORD:
         user_count = inp.count
         count = None
         index = None
@@ -165,7 +176,47 @@ async def data(inp: BanShardCountInput, request: Request):
         return {"status": "success"}
     else:
         return {"status": "failed", "detail": "You are not an admin!"}
+
     
+@app.post('/custom/lookup-wat')
+async def lookup_wat(inp: LookupWatInput):
+    if inp.password != ADMIN_PASSWORD:
+        return {"status": "failed", "detail": "Invalid password."}
+    
+    shards = []
+    for i, shard in s.open_jobs:
+        if s.shard_info["directory"] + shard["url"] == inp.url:
+            shards.append(i + 1)
+    
+    if len(shards) != 2:
+        return {"status": "failed", "detail": "Segment partially completed."}
+    elif (str(shards[1]) in s.pending_jobs or str(shards[1]) in s.closed_jobs) or (str(shards[0]) in s.pending_jobs or str(shards[0]) in s.closed_jobs):
+        return {"status": "failed", "detail": "Segment already completed."}
+    else:
+        return {"status": "success", "shards": shards}
+    
+    
+@app.post('/custom/markasdone')
+async def lookup_wat(inp: LookupWatInput):
+    if inp.password != ADMIN_PASSWORD:
+        return {"status": "failed", "detail": "Invalid password."}
+    
+    for shard in inp.shards:
+        if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
+            continue
+        else:
+            s.closed_jobs.append(str(shard))
+            
+            try:
+                s.leaderboard[inp.nickname][0] += 1
+                s.leaderboard[inp.nickname][1] += inp.count
+            except:
+                s.leaderboard[inp.nickname] = [1, inp.count]
+
+            s.total_pairs += inp.count
+    
+    return {"status": "success"}
+            
     
 # API START ------
 
