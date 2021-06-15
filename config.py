@@ -17,9 +17,7 @@ AVERAGE_INTERVAL = 900 # The interval for each measurement of the averages to ta
 AVERAGE_DATASET_LENGTH = 10 # The maximum amount of measurements for the averages until older measurements are discarded.
 
 # ADMIN
-ADMIN_IPS = [
-  "<YOUR IP HERE>"
-]
+ADMIN_PASSWORD = "password"
 
 # CACHE
 MAX_WORKER_CACHE_SIZE = 250 # The max amount of {nickname: token} caches stored before early ones are erased. (for looking up workers' details)
