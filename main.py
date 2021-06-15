@@ -144,7 +144,7 @@ async def worker_data(worker: str):
 # ADMIN START ------
 
 @app.post('/admin/ban-shard')
-async def data(inp: BanShardCountInput, request: Request):
+async def ban_shard(inp: BanShardCountInput, request: Request):
     if inp.password == ADMIN_PASSWORD:
         user_count = inp.count
         count = None
@@ -177,6 +177,42 @@ async def data(inp: BanShardCountInput, request: Request):
     else:
         return {"status": "failed", "detail": "You are not an admin!"}
 
+
+@app.post('/admin/reset-shard')
+async def reset_shard(inp: BanShardCountInput, request: Request):
+    if inp.password == ADMIN_PASSWORD:
+        user_count = inp.count
+        count = None
+        index = None
+        for i, shard in enumerate(s.open_jobs):
+            count = (np.int64(shard["end_id"]) / 1000000) * 2
+            if shard["shard"] == 0:
+                count -= 1
+            
+            if int(count) == user_count:
+                index = i
+                try:
+                    s.pending_jobs.remove(str(count))
+                except:
+                    pass
+                
+                try:
+                    s.closed_jobs.remove(str(count))
+                except:
+                    pass
+                
+                break
+         
+        
+        with open("jobs/open.json", "w") as f:
+            json.dump(s.open_jobs, f)
+        with open("jobs/closed.json", "w") as f:
+            json.dump(s.closed_jobs, f)
+        
+        return {"status": "success"}
+    else:
+        return {"status": "failed", "detail": "You are not an admin!"}
+    
     
 @app.post('/custom/lookup-wat')
 async def lookup_wat(inp: LookupWatInput):
