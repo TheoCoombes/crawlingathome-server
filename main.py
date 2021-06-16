@@ -165,8 +165,11 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
                 except:
                     pass
                 break
-         
-        del s.open_jobs[index]
+        
+        if index is None:
+            return {"status": "failed", "detail": "Could not find that shard."}
+        else:
+            del s.open_jobs[index]
         
         with open("jobs/open.json", "w") as f:
             json.dump(s.open_jobs, f)
