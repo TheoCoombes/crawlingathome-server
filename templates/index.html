@@ -71,7 +71,7 @@
             </table>
             <br>
             {% if len(clients) > 150 and not all %}
-                <i>Limited view to 150 workers. <a href="/?all">View All</a></i>
+                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i>
             {% endif %}
         {% elif completion == 100.0 %}
             <p>All jobs have been completed, thank you!</p>
