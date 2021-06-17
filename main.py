@@ -225,11 +225,11 @@ async def lookup_wat(inp: LookupWatInput):
     shards = []
     for i, shard in s.open_jobs:
         if s.shard_info["directory"] + shard["url"] == inp.url:
-            shards.append(i + 1)
+            shards.append([i + 1, shard])
     
     if len(shards) != 2:
         return {"status": "failed", "detail": "Segment partially completed."}
-    elif (str(shards[1]) in s.pending_jobs or str(shards[1]) in s.closed_jobs) or (str(shards[0]) in s.pending_jobs or str(shards[0]) in s.closed_jobs):
+    elif (str(shards[1][0]) in s.pending_jobs or str(shards[1][0]) in s.closed_jobs) or (str(shards[0][0]) in s.pending_jobs or str(shards[0][0]) in s.closed_jobs):
         return {"status": "failed", "detail": "Segment already completed."}
     else:
         return {"status": "success", "shards": shards}
