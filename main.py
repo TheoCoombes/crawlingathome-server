@@ -223,7 +223,7 @@ async def lookup_wat(inp: LookupWatInput):
     
     
 @app.post('/custom/markasdone')
-async def lookup_wat(inp: LookupWatInput):
+async def custom_markasdone(inp: MarkAsDoneInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
