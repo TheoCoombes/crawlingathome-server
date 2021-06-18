@@ -37,7 +37,7 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for i in clients|slice:":150" %}
+                            {% for i in (clients|slice:":150") %}
                                 <tr>
                                     <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
                                     {% if clients[i]["shard_number"] == "Waiting" %}
