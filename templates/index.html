@@ -37,33 +37,33 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for i in (clients.keys() | list)[-150:] %}
+                            {% for worker in (clients.values() | list)[-150:] %}
                                 <tr>
-                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
-                                    {% if clients[i]["shard_number"] == "Waiting" %}
+                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
-                                        <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
                                     {% endif %}
-                                    <td>{{ clients[i]["progress"] }}</td>
-                                    <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
-                                    <td>{{ clients[i]["user_nickname"] }}</td>
-                                    <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
                                 </tr>
                             {% endfor %}
                     {% else %}
-                        {% for i in clients %}
+                        {% for worker in clients.values() %}
                                 <tr>
-                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
-                                    {% if clients[i]["shard_number"] == "Waiting" %}
+                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
-                                        <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
                                     {% endif %}
-                                    <td>{{ clients[i]["progress"] }}</td>
-                                    <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
-                                    <td>{{ clients[i]["user_nickname"] }}</td>
-                                    <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
                                 </tr>
                         {% endfor %}
                     {% endif %}
