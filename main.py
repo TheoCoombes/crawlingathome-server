@@ -187,31 +187,16 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
 async def reset_shard(inp: BanShardCountInput, request: Request):
     if inp.password == ADMIN_PASSWORD:
         user_count = inp.count
-        count = None
-        index = None
-        for i, shard in enumerate(s.open_jobs):
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-            
-            if int(count) == user_count:
-                index = i
-                try:
-                    s.pending_jobs.remove(str(count))
-                except:
-                    pass
+        
+        try:
+            s.closed_jobs.remove(str(user_count))
+        except:
+            return {"status": "failed", "detail": "Shard not found!"}
                 
-                try:
-                    s.closed_jobs.remove(str(count))
-                except:
-                    pass
-                
-                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
-    
-                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
-                
-                break
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
          
         
         return {"status": "success"}
@@ -364,6 +349,8 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
     if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
+    if str(s.clients[token]["shard_number"]) in s.closed_jobs:
+        return "already completed, not raising error"
         
     s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
