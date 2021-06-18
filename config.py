@@ -3,14 +3,14 @@
 # SERVER
 HOST = "0.0.0.0"
 PORT = 80
-WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server. [NOT CURRENTLY WORKING]
+# WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server. [NOT CURRENTLY WORKING]
 
 # STORE CONFIG
-STORE_PASSWORD = "password" # Password used to access the store.
-STORE_PORT = 5000 # Store port.
+# STORE_PASSWORD = "password" # Password used to access the store.
+# STORE_PORT = 5000 # Store port.
 
 # WORKER CONFIG
-IDLE_TIMEOUT = 5400 # The interval until a worker is kicked for being idle. (90 minutes)
+IDLE_TIMEOUT = 10800 # The interval until a worker is kicked for being idle. (3 hours)
 
 # ETA CALCULATION
 AVERAGE_INTERVAL = 900 # The interval for each measurement of the averages to take place. (15 minutes)
