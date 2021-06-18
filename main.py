@@ -101,10 +101,10 @@ async def worker_info(worker: str, request: Request):
                 if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
                     s.worker_cache.pop(0)
                 break
-        if not w:
-            raise HTTPException(status_code=500, detail="Worker not found.")
-        else:
-            return templates.TemplateResponse('worker.html', {"request": request, **w})
+    if not w:
+        raise HTTPException(status_code=500, detail="Worker not found.")
+    else:
+        return templates.TemplateResponse('worker.html', {"request": request, **w})
 
 
 @app.get('/data')
