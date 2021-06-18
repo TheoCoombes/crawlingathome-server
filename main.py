@@ -166,6 +166,11 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
                 except:
                     pass
                 break
+                
+                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
         
         
         if index is None:
@@ -200,6 +205,11 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
                     s.closed_jobs.remove(str(count))
                 except:
                     pass
+                
+                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+    
+                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
                 
                 break
          
@@ -245,6 +255,11 @@ async def lookup_wat(inp: LookupWatInput):
                 s.leaderboard[inp.nickname] = [1, inp.count]
 
             s.total_pairs += inp.count
+            
+            s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+            s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+            s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
     
     return {"status": "success"}
             
