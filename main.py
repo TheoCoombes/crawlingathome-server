@@ -125,7 +125,7 @@ async def data():
 @app.get('/worker/{worker}/data')
 async def worker_data(worker: str):
     if worker in s.worker_cache:
-        return s.worker_cache[worker]
+        return s.clients[s.worker_cache[worker]]
     
     w = None
     for token in s.clients:
@@ -135,6 +135,7 @@ async def worker_data(worker: str):
             if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
                 s.worker_cache.pop(0)
             break
+            
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
