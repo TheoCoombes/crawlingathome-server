@@ -91,7 +91,7 @@ async def stats():
 @app.get('/worker/{worker}', response_class=HTMLResponse)
 async def worker_info(worker: str, request: Request):
     if worker in s.worker_cache:
-        w = s.worker_cache[worker]
+        w = s.clients[s.worker_cache[worker]]
     else:
         w = None
         for token in s.clients:
