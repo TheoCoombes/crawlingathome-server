@@ -39,7 +39,7 @@
                     {% if not all %}
                             {% for worker in (clients.values() | list)[-150:] %}
                                 <tr>
-                                    <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    <th scope="row"><a href="/worker/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
