@@ -329,7 +329,7 @@ async def newJob(inp: Optional[TokenInput] = None):
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
 async def jobCount():
-    return s.jobs_remaining
+    return str(s.jobs_remaining)
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
