@@ -40,15 +40,15 @@
                             {% for i in (clients.keys() | list)[-150:] %}
                                 <tr>
                                     <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
-                                    {% if clients[i[0]]["shard_number"] == "Waiting" %}
+                                    {% if clients[i]["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
                                         <td>{{ "{:,}".format(clients[i]["shard_number"]) }}</td>
                                     {% endif %}
-                                    <td>{{ clients[i[0]]["progress"] }}</td>
-                                    <td>{{ "{:,}".format(clients[i[0]]["jobs_completed"]) }}</td>
-                                    <td>{{ clients[i[0]]["user_nickname"] }}</td>
-                                    <td class="timestamp">{{ clients[i[0]]["last_seen"] }}</td>
+                                    <td>{{ clients[i]["progress"] }}</td>
+                                    <td>{{ "{:,}".format(clients[i]["jobs_completed"]) }}</td>
+                                    <td>{{ clients[i]["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ clients[i]["last_seen"] }}</td>
                                 </tr>
                             {% endfor %}
                     {% else %}
