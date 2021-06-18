@@ -469,8 +469,6 @@ async def app_startup():
 @app.on_event('shutdown')
 async def shutdown_event():
     if __name__ == "__main__":
-        s.manager.shutdown()
-    
         with open("jobs/closed.json", "w") as f:
             json.dump(s.closed_jobs, f)
 
