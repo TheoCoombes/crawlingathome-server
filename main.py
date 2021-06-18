@@ -227,24 +227,27 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
+    existed = False
     for shard in inp.shards:
         if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
             continue
         else:
             s.closed_jobs.append(str(shard))
-            
-            try:
-                s.leaderboard[inp.nickname][0] += 1
-                s.leaderboard[inp.nickname][1] += inp.count
-            except:
-                s.leaderboard[inp.nickname] = [1, inp.count]
+            existed = True
+    
+    if existed:
+        try:
+            s.leaderboard[inp.nickname][0] += 1
+            s.leaderboard[inp.nickname][1] += inp.count
+        except:
+            s.leaderboard[inp.nickname] = [1, inp.count]
 
-            s.total_pairs += inp.count
-            
-            s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+        s.total_pairs += inp.count
 
-            s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-            s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
     
     return {"status": "success"}
             
