@@ -21,9 +21,9 @@
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Connected Workers - {{ "{:,}".format(len(clients)) }}</h2>
+        <h2>Connected Workers - {{ "{:,}".format(clients | length) }}</h2>
         <br>
-        {% if len(clients) != 0 %}
+        {% if (clients | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -37,7 +37,7 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for i in list(clients.keys())[-150:] %}
+                            {% for i in (clients.keys() | list)[-150:] %}
                                 <tr>
                                     <th scope="row"><a href="/worker/{{ clients[i]['display_name'] }}">{{ clients[i]["display_name"] }}</a></th>
                                     {% if clients[i[0]]["shard_number"] == "Waiting" %}
@@ -70,7 +70,7 @@
                 </tbody>
             </table>
             <br>
-            {% if len(clients) > 150 and not all %}
+            {% if (clients | length) > 150 and not all %}
                 <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i>
             {% endif %}
         {% elif completion == 100.0 %}
