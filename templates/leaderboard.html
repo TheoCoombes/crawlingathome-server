@@ -12,7 +12,7 @@
         <br><br>
         <h2>Leaderboard</h2>
         <br>
-        {% if len(leaderboard) != 0 %}
+        {% if (leaderboard | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -22,11 +22,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for i in leaderboard %}
+                    {% for user, data in leaderboard.items() %}
                         <tr>
-                            <th scope="row">{{ i }}</th>
-                            <td>{{ leaderboard[i][0] }}</td>
-			                <td>{{ leaderboard[i][1] }}</td>
+                            <th scope="row">{{ user }}</th>
+                            <td>{{ data[0] }}</td>
+			                <td>{{ data[1] }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
