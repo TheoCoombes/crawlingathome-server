@@ -227,20 +227,20 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
-    existed = False
+    existed = 0
     for shard in inp.shards:
         if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
             continue
         else:
             s.closed_jobs.append(str(shard))
-            existed = True
+            existed += 1
     
-    if existed:
+    if existed > 0:
         try:
-            s.leaderboard[inp.nickname][0] += 1
+            s.leaderboard[inp.nickname][0] += existed
             s.leaderboard[inp.nickname][1] += inp.count
         except:
-            s.leaderboard[inp.nickname] = [1, inp.count]
+            s.leaderboard[inp.nickname] = [existed, inp.count]
 
         s.total_pairs += inp.count
 
@@ -248,8 +248,10 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
-    
-    return {"status": "success"}
+        
+        return {"status": "success"}
+    else:
+        return {"status": "failed", "detail": "Another worker has already finished this job."}
             
     
 # API START ------
