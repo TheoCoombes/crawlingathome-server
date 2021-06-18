@@ -13,23 +13,21 @@ from name import new as newName
 from datetime import timedelta
 from time import time, sleep
 from uuid import uuid4
-from copy import copy
 import numpy as np
 import json
 
 from store import DataLoader
 
-from config import (
-    HOST, PORT, WORKERS_COUNT,
-    IDLE_TIMEOUT,
-    AVERAGE_INTERVAL, AVERAGE_DATASET_LENGTH,
-    ADMIN_IPS
-)
+from config import *
 
 
+#if __name__ == "__main__":
 s = DataLoader()
+#else:
+# sleep(180)
+#   s = DataLoader(host=False)
 
-
+    
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -39,6 +37,7 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 
 # REQUEST INPUTS START ------
+
 
 class TokenInput(BaseModel):
     token: str
@@ -52,15 +51,26 @@ class TokenCountInput(BaseModel):
     count: int
 
 class BanShardCountInput(BaseModel):
+    password: str
     count: int
+
+class LookupWatInput(BaseModel):
+    password: str
+    url: str
+
+class MarkAsDoneInput(BaseModel):
+    password: str
+    shards: list
+    count: int
+    nickname: str
         
 
 # FRONTEND START ------
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse('index.html', {"request": request, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
+async def index(request: Request, all: Optional[bool] = False):
+    return templates.TemplateResponse('index.html', {"request": request, "all": all, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
 
 
 @app.get('/install', response_class=HTMLResponse)
@@ -75,21 +85,26 @@ async def leaderboard_page(request: Request):
 
 @app.get('/stats', response_class=HTMLResponse)
 async def stats():
-    return raw_text_stats.format(progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
+    return raw_text_stats.format(s.progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
 @app.get('/worker/{worker}', response_class=HTMLResponse)
 async def worker_info(worker: str, request: Request):
-    w = None
-    for token in s.clients:
-        if s.clients[token]["display_name"] == worker:
-            w = copy(s.clients[token])
-            break
+    if worker in s.worker_cache:
+        w = s.clients[s.worker_cache[worker]]
+    else:
+        w = None
+        for token in s.clients:
+            if s.clients[token]["display_name"] == worker:
+                w = s.clients[token]
+                s.worker_cache[worker] = token
+                if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
+                    s.worker_cache.pop(0)
+                break
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
         return templates.TemplateResponse('worker.html', {"request": request, **w})
-    
 
 
 @app.get('/data')
@@ -109,11 +124,18 @@ async def data():
 
 @app.get('/worker/{worker}/data')
 async def worker_data(worker: str):
+    if worker in s.worker_cache:
+        return s.clients[s.worker_cache[worker]]
+    
     w = None
     for token in s.clients:
         if s.clients[token]["display_name"] == worker:
-            w = copy(s.clients[token])
+            w = s.clients[token]
+            s.worker_cache[worker] = token
+            if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
+                s.worker_cache.pop(0)
             break
+            
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
@@ -123,8 +145,8 @@ async def worker_data(worker: str):
 # ADMIN START ------
 
 @app.post('/admin/ban-shard')
-async def data(inp: BanShardCountInput, request: Request):
-    if request.client.host in ADMIN_IPS:
+async def ban_shard(inp: BanShardCountInput, request: Request):
+    if inp.password == ADMIN_PASSWORD:
         user_count = inp.count
         count = None
         index = None
@@ -144,25 +166,100 @@ async def data(inp: BanShardCountInput, request: Request):
                 except:
                     pass
                 break
-         
-        del s.open_jobs[index]
+                
+                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
         
-        with open("jobs/open.json", "w") as f:
-            json.dump(s.open_jobs, f)
-        with open("jobs/closed.json", "w") as f:
-            json.dump(s.closed_jobs, f)
+        
+        if index is None:
+            return {"status": "failed", "detail": "Could not find that shard."}
+        else:
+            del s.open_jobs[index]
+        
+        return {"status": "success"}
+    else:
+        return {"status": "failed", "detail": "You are not an admin!"}
+
+
+@app.post('/admin/reset-shard')
+async def reset_shard(inp: BanShardCountInput, request: Request):
+    if inp.password == ADMIN_PASSWORD:
+        user_count = inp.count
+        
+        try:
+            s.closed_jobs.remove(str(user_count))
+        except:
+            return {"status": "failed", "detail": "Shard not found!"}
+                
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+         
         
         return {"status": "success"}
     else:
         return {"status": "failed", "detail": "You are not an admin!"}
     
     
+@app.post('/custom/lookup-wat')
+async def lookup_wat(inp: LookupWatInput):
+    if inp.password != ADMIN_PASSWORD:
+        return {"status": "failed", "detail": "Invalid password."}
+    
+    shards = []
+    for i, shard in enumerate(s.open_jobs):
+        if s.shard_info["directory"] + shard["url"] == inp.url:
+            shards.append([i + 1, shard])
+    
+    if len(shards) != 2:
+        return {"status": "failed", "detail": "Segment partially completed."}
+    elif (str(shards[1][0]) in s.pending_jobs or str(shards[1][0]) in s.closed_jobs) or (str(shards[0][0]) in s.pending_jobs or str(shards[0][0]) in s.closed_jobs):
+        return {"status": "failed", "detail": "Segment already completed."}
+    else:
+        return {"status": "success", "shards": shards}
+    
+    
+@app.post('/custom/markasdone')
+async def custom_markasdone(inp: MarkAsDoneInput):
+    if inp.password != ADMIN_PASSWORD:
+        return {"status": "failed", "detail": "Invalid password."}
+    
+    existed = 0
+    for shard in inp.shards:
+        if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
+            continue
+        else:
+            s.closed_jobs.append(str(shard))
+            existed += 1
+    
+    if existed > 0:
+        try:
+            s.leaderboard[inp.nickname][0] += existed
+            s.leaderboard[inp.nickname][1] += inp.count
+        except:
+            s.leaderboard[inp.nickname] = [existed, inp.count]
+
+        s.total_pairs += inp.count
+
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+
+        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+        
+        return {"status": "success"}
+    else:
+        return {"status": "failed", "detail": "Another worker has already finished this job."}
+            
+    
 # API START ------
 
 
 @app.get('/api/new')
 async def new(nickname: str):
-    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
+    if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
@@ -192,7 +289,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if len(s.open_jobs) == 0 or len(s.open_jobs) == len(s.pending_jobs):
+    if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     if s.clients[token]["shard_number"] != "Waiting":
@@ -208,7 +305,7 @@ async def newJob(inp: Optional[TokenInput] = None):
     if shard["shard"] == 0:
         count -= 1
     
-    count = count.astype(int)
+    count = int(count)
     
     while str(count) in s.pending_jobs or str(count) in s.closed_jobs:
         c += 1
@@ -218,9 +315,10 @@ async def newJob(inp: Optional[TokenInput] = None):
         if shard["shard"] == 0:
             count -= 1
         
-        count = count.astype(int)
+        count = int(count)
     
     s.pending_jobs.append(str(count))
+    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
 
     s.clients[token]["shard_number"] = count
     s.clients[token]["progress"] = "Recieved new job"
@@ -231,7 +329,7 @@ async def newJob(inp: Optional[TokenInput] = None):
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
 async def jobCount():
-    return str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+    return s.jobs_remaining
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
@@ -256,9 +354,12 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
     if token not in s.clients:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
+    if str(s.clients[token]["shard_number"]) in s.closed_jobs:
+        return "already completed, not raising error"
         
     s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
     s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
     
     s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
     s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -361,27 +462,29 @@ async def save_jobs_leaderboard():
     
 @app.on_event('startup')
 async def app_startup():
-    asyncio.create_task(check_idle(IDLE_TIMEOUT))
-    asyncio.create_task(calculate_eta())
-    asyncio.create_task(save_jobs_leaderboard())
+    if __name__ == "__main__":
+        asyncio.create_task(check_idle(IDLE_TIMEOUT))
+        asyncio.create_task(calculate_eta())
+        asyncio.create_task(save_jobs_leaderboard())
 
   
 @app.on_event('shutdown')
 async def shutdown_event():
-    with open("jobs/closed.json", "w") as f:
-        json.dump(s.closed_jobs, f)
-        
-    with open("jobs/leaderboard.json", "w") as f:
-        json.dump(s.leaderboard, f)
+    if __name__ == "__main__":
+        with open("jobs/closed.json", "w") as f:
+            json.dump(s.closed_jobs, f)
+
+        with open("jobs/leaderboard.json", "w") as f:
+            json.dump(s.leaderboard, f)
 
         
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
-    
-    
+
+
 # ------------------------------ 
-    
-    
+
+
 if __name__ == "__main__":
-    run(app, host=HOST, port=PORT) # ,workers=WORKERS_COUNT
+    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT [multiprocessing was reverted for v2.1.0, will be added at a later date TBD]
