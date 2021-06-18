@@ -210,7 +210,7 @@ async def lookup_wat(inp: LookupWatInput):
         return {"status": "failed", "detail": "Invalid password."}
     
     shards = []
-    for i, shard in s.open_jobs:
+    for i, shard in enumerate(s.open_jobs):
         if s.shard_info["directory"] + shard["url"] == inp.url:
             shards.append([i + 1, shard])
     
