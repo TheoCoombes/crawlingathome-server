@@ -281,6 +281,11 @@ async def new(nickname: str):
     return {"display_name": display_name, "token": uuid}
 
 
+@app.get('/api/validateWorker', response_class=PlainTextResponse)
+async def validate(token: str):
+    return str(token in s.clients)
+
+
 @app.post('/api/newJob')
 async def newJob(inp: Optional[TokenInput] = None):
     if not inp:
