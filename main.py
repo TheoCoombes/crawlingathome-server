@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as newName
-from datetime import timedelta
+from datetime import datetime, timedelta
 from time import time, sleep
 from uuid import uuid4
 import numpy as np
@@ -416,6 +416,23 @@ async def check_idle(timeout):
 
         
 async def calculate_eta():
+    def _format_time(s):
+        s = int(s)
+        y, s = divmod(s, 31_536_000)
+        d, s = divmod(s, 86400)
+        h, s = divmod(s, 3600)
+        m, s = divmod(s, 60)
+        if y:
+            return f"{y} year{'s' if y>1 else ''}, {d} day{'s' if d>1 else ''}, {h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+        elif d:
+            return f"{d} day{'s' if d>1 else ''}, {h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+        elif h:
+            return f"{h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+        elif m:
+            return f"{m} minute{'s' if m>1 else ''},  {s} second{'s' if s>1 else ''}"
+        else:
+            return f"{s} second{'s' if s>1 else ''}"
+
     dataset = []
     while True:
         start = len(s.closed_jobs)
@@ -434,8 +451,8 @@ async def calculate_eta():
             length = remaining // mean_per_second
         except ZeroDivisionError:
             continue
-
-        s.eta = str(timedelta(seconds=length))
+        
+        s.eta = _format_time(length)
 
         
 async def save_jobs_leaderboard():
