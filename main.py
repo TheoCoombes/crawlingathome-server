@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as newName
-from datetime import datetime, timedelta
 from time import time, sleep
 from uuid import uuid4
 import numpy as np
