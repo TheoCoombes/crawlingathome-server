@@ -427,15 +427,15 @@ async def calculate_eta():
         h, s = divmod(s, 3600)
         m, s = divmod(s, 60)
         if y:
-            return f"{y} year{'s' if y>1 else ''}, {d} day{'s' if d>1 else ''}, {h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+            return f"{y} year{'s' if y!=1 else ''}, {d} day{'s' if d!=1 else ''}, {h} hour{'s' if h!=1 else ''}, {m} minute{'s' if m!=1 else ''} and {s} second{'s' if s!=1 else ''}"
         elif d:
-            return f"{d} day{'s' if d>1 else ''}, {h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+            return f"{d} day{'s' if d!=1 else ''}, {h} hour{'s' if h!=1 else ''}, {m} minute{'s' if m!=1 else ''} and {s} second{'s' if s>1 else ''}"
         elif h:
-            return f"{h} hour{'s' if h>1 else ''}, {m} minute{'s' if m>1 else ''}, {s} second{'s' if s>1 else ''}"
+            return f"{h} hour{'s' if h!=1 else ''}, {m} minute{'s' if m!=1 else ''} and {s} second{'s' if s>1 else ''}"
         elif m:
-            return f"{m} minute{'s' if m>1 else ''},  {s} second{'s' if s>1 else ''}"
+            return f"{m} minute{'s' if m!=1 else ''} and {s} second{'s' if s!=1 else ''}"
         else:
-            return f"{s} second{'s' if s>1 else ''}"
+            return f"{s} second{'s' if s!=1 else ''}"
 
     dataset = []
     while True:
@@ -456,7 +456,10 @@ async def calculate_eta():
         except ZeroDivisionError:
             continue
         
-        s.eta = _format_time(length)
+        if length:
+            s.eta = _format_time(length)
+        else:
+            s.eta = "Finished"
 
         
 async def save_jobs_leaderboard():
