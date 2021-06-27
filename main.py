@@ -29,6 +29,7 @@ s = DataLoader()
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+types = ["HYBRID", "CPU", "GPU"]
 
 raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Workers:</strong> {}<br><strong>Alt-Text Pairs Scraped:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many workers connected to the server to prevent slow loading times.</i>"    
 
@@ -259,6 +260,8 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
 @app.get('/api/new')
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
+    if type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
@@ -283,11 +286,15 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
 async def validate(inp: TokenInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     return str(inp.token in s.clients[inp.type])
 
 
 @app.post('/api/newJob')
 async def newJob(inp: TokenInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     token = inp.token
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
@@ -331,12 +338,20 @@ async def newJob(inp: TokenInput):
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
-async def jobCount():
-    return str(s.jobs_remaining)
+async def jobCount(type: Optional[str] = "HYBRID"):
+    if type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+        
+    if type == "GPU":
+        pass # TODO
+    else:
+        return str(s.jobs_remaining)
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
 async def updateProgress(inp: TokenProgressInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     token = inp.token
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
@@ -349,6 +364,8 @@ async def updateProgress(inp: TokenProgressInput):
 
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
 async def markAsDone(inp: TokenCountInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     token = inp.token
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
@@ -381,6 +398,8 @@ async def markAsDone(inp: TokenCountInput):
 
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     token = inp.token
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
@@ -400,7 +419,7 @@ async def bye(inp: TokenInput):
 
 async def check_idle(timeout):
     while True:
-        for type in ["HYBRID", "CPU", "GPU"]:
+        for type in types:
             for client in list(s.clients[type].keys()):
                 if (time() - s.clients[type][client]["last_seen"]) > timeout:
                     try:
