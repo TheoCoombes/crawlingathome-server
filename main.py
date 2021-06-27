@@ -484,6 +484,7 @@ async def calculate_eta():
 async def save_jobs_leaderboard():
     a = len(s.closed_jobs)
     b = sum([s.leaderboard[i][1] for i in s.leaderboard])
+    c = len(s.open_gpu)
     while True:
         await asyncio.sleep(300)
 
@@ -495,9 +496,14 @@ async def save_jobs_leaderboard():
         if b != y:
             with open("jobs/leaderboard.json", "w") as f:
                 json.dump(s.leaderboard, f)
+        z = len(s.open_gpu)
+        if c != z:
+            with open("jobs/open_gpu.json", "w") as f:
+                json.dump(s.open_gpu, f)
 
         a = x
         b = y
+        c = z
         
 
 # FASTAPI UTILITIES START ------ 
@@ -519,6 +525,9 @@ async def shutdown_event():
 
         with open("jobs/leaderboard.json", "w") as f:
             json.dump(s.leaderboard, f)
+        
+        with open("jobs/open_gpu.json", "w") as f:
+                json.dump(s.open_gpu, f)
 
         
 @app.exception_handler(StarletteHTTPException)
