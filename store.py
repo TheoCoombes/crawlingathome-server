@@ -24,6 +24,7 @@ class DataLoader:
             self.gpu_jobs = json.load(f)
 
         self.pending_jobs = []
+        self.pending_gpu = []
 
         self.total_jobs = self.shard_info["total_shards"]
 
