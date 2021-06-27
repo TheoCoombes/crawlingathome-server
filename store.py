@@ -19,6 +19,9 @@ class DataLoader:
 
         with open("jobs/leaderboard.json", "r") as f:
             self.leaderboard = json.load(f)
+        
+        with open("jobs/open_gpu.json", "r") as f:
+            self.gpu_jobs = json.load(f)
 
         self.pending_jobs = []
 
@@ -38,3 +41,13 @@ class DataLoader:
             self.progress_str = "0 / 0"
 
         self.eta = "N/A"
+    
+    def dump_all(self):
+        with open("jobs/closed.json", "w") as f:
+             json.dump(self.closed_jobs, f)
+
+        with open("jobs/leaderboard.json", "w") as f:
+            json.dump(self.leaderboard, f)
+        
+        with open("jobs/open_gpu.json", "w") as f:
+            json.dump(self.gpu_jobs, f)
