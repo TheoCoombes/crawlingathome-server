@@ -349,7 +349,7 @@ async def jobCount(type: Optional[str] = "HYBRID"):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
-        pass # TODO
+        return str(len(s.open_gpu) - len(s.pending_gpu))
     else:
         return str(s.jobs_remaining)
 
