@@ -38,14 +38,18 @@ raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Wor
 
 class TokenInput(BaseModel):
     token: str
+    type: Optional[str] = "HYBRID"
 
 class TokenProgressInput(BaseModel):
     token: str
     progress: str
+    type: Optional[str] = "HYBRID"
 
-class TokenCountInput(BaseModel):
+class TokenCountInput(BaseModel): # For marking as done
     token: str
-    count: int
+    count: Optional[int] = None  # `count` is for HYBRID/GPU
+    url: Optional[str] = None    # `url` is for CPU
+    type: Optional[str] = "HYBRID"
 
 class BanShardCountInput(BaseModel):
     password: str
