@@ -12,6 +12,8 @@
         <br><br>
         <h2>Worker: {{ display_name }}</h2>
         <br>
+        <strong>Worker Type:</strong> {{ type }}
+	    <br><br>
         <strong>First Seen:</strong> <span class="timestamp">{{ first_seen }}</span>
 	    <br><br>
         <strong>Last Seen:</strong> <span class="timestamp">{{ last_seen }}</span>
@@ -30,7 +32,7 @@
         <br><br><br>
 	<a href="/">Back</a>
 	<br><br>
-	<i>NOTE: You can visit '<a href="/worker/{{ display_name }}/data">/worker/{{ display_name }}/data</a>' for the raw JSON data.</i>
+	<i>NOTE: You can visit '<a href="/worker/{{ type.lower() }}/{{ display_name }}/data">/worker/{{ type }}/{{ display_name }}/data</a>' for the raw JSON data.</i>
         
         <script src="https://cdn.jsdelivr.net/gh/TheoCoombes/crawlingathome-server@main/cdn/main.js"></script>
 	</body>
