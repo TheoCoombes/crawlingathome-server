@@ -71,7 +71,7 @@ class MarkAsDoneInput(BaseModel):
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
-    return templates.TemplateResponse('index.html', {"request": request, "all": all, "len": len, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
+    return templates.TemplateResponse('index.html', {"request": request, "all": all, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
 
 
 @app.get('/install', response_class=HTMLResponse)
@@ -81,7 +81,7 @@ async def install(request: Request):
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    return templates.TemplateResponse('leaderboard.html', {"request": request, "len": len, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
+    return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 
 @app.get('/stats', response_class=HTMLResponse)
@@ -89,18 +89,18 @@ async def stats():
     return raw_text_stats.format(s.progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
-@app.get('/worker/{worker}', response_class=HTMLResponse)
-async def worker_info(worker: str, request: Request):
-    if worker in s.worker_cache:
-        w = s.clients[s.worker_cache[worker]]
+@app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
+async def worker_info(type: str, worker: str, request: Request):
+    if worker in s.worker_cache[type]:
+        w = s.clients[s.worker_cache[type][worker]]
     else:
         w = None
-        for token in s.clients:
-            if s.clients[token]["display_name"] == worker:
-                w = s.clients[token]
-                s.worker_cache[worker] = token
-                if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
-                    s.worker_cache.pop(0)
+        for token in s.clients[type]:
+            if s.clients[type][token]["display_name"] == worker:
+                w = s.clients[type][token]
+                s.worker_cache[type][worker] = token
+                if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
+                    s.worker_cache[type].pop(0)
                 break
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
@@ -113,7 +113,7 @@ async def data():
     return {
         "completion_str": s.progress_str,
         "completion_float": s.completion,
-        "total_connected_workers": len(s.clients),
+        "total_connected_workers": len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"]),
         "total_pairs_scraped": s.total_pairs,
         "open_jobs": len(s.open_jobs),
         "pending_jobs": len(s.pending_jobs),
@@ -123,20 +123,19 @@ async def data():
     }
 
 
-@app.get('/worker/{worker}/data')
-async def worker_data(worker: str):
-    if worker in s.worker_cache:
-        return s.clients[s.worker_cache[worker]]
+@app.get('/worker/{type}/{worker}/data')
+async def worker_data(type: str, worker: str):
+    if worker in s.worker_cache[type]:
+        return s.clients[s.worker_cache[type][worker]]
     
     w = None
-    for token in s.clients:
-        if s.clients[token]["display_name"] == worker:
-            w = s.clients[token]
-            s.worker_cache[worker] = token
-            if len(s.worker_cache) > MAX_WORKER_CACHE_SIZE:
-                s.worker_cache.pop(0)
+    for token in s.clients[type]:
+        if s.clients[type][token]["display_name"] == worker:
+            w = s.clients[type][token]
+            s.worker_cache[type][worker] = token
+            if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
+                s.worker_cache[type].pop(0)
             break
-            
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
@@ -259,7 +258,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
 
 @app.get('/api/new')
-async def new(nickname: str):
+async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
@@ -277,28 +276,26 @@ async def new(nickname: str):
         "display_name": display_name
     }
 
-    s.clients[uuid] = worker_data
+    s.clients[type][uuid] = worker_data
 
     return {"display_name": display_name, "token": uuid}
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
 async def validate(inp: TokenInput):
-    return str(inp.token in s.clients)
+    return str(inp.token in s.clients[inp.type])
 
 
 @app.post('/api/newJob')
-async def newJob(inp: Optional[TokenInput] = None):
-    if not inp:
-        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
+async def newJob(inp: TokenInput):
     token = inp.token
-    if token not in s.clients:
+    if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
-    if s.clients[token]["shard_number"] != "Waiting":
+    if s.clients[inp.type][token]["shard_number"] != "Waiting":
         try:
             s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
         except:
@@ -326,9 +323,9 @@ async def newJob(inp: Optional[TokenInput] = None):
     s.pending_jobs.append(str(count))
     s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
 
-    s.clients[token]["shard_number"] = count
-    s.clients[token]["progress"] = "Recieved new job"
-    s.clients[token]["last_seen"] = time()
+    s.clients[inp.type][token]["shard_number"] = count
+    s.clients[inp.type][token]["progress"] = "Recieved new job"
+    s.clients[inp.type][token]["last_seen"] = time()
 
     return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
 
@@ -339,47 +336,43 @@ async def jobCount():
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
-async def updateProgress(inp: Optional[TokenProgressInput] = None):
-    if not inp:
-        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
+async def updateProgress(inp: TokenProgressInput):
     token = inp.token
-    if token not in s.clients:
+    if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    s.clients[token]["progress"] = inp.progress
-    s.clients[token]["last_seen"] = time()
+    s.clients[inp.type][token]["progress"] = inp.progress
+    s.clients[inp.type][token]["last_seen"] = time()
     
     return "success"
 
 
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
-async def markAsDone(inp: Optional[TokenCountInput] = None):
-    if not inp:
-        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
+async def markAsDone(inp: TokenCountInput):
     token = inp.token
-    if token not in s.clients:
+    if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if str(s.clients[token]["shard_number"]) in s.closed_jobs:
-        return "already completed, not raising error"
+    if str(s.clients[inp.type][token]["shard_number"]) in s.closed_jobs:
+        return "job already completed, not raising error"
         
-    s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
-    s.closed_jobs.append(str(s.clients[token]["shard_number"])) # !! NEWER SERVERS SHOULD PROBABLY STORE THE DATA INSTEAD OF THE NUMBER !!
+    s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+    s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
     s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
     
     s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
     s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
 
-    s.clients[token]["shard_number"] = "Waiting"
-    s.clients[token]["progress"] = "Completed Job"
-    s.clients[token]["jobs_completed"] += 1
-    s.clients[token]["last_seen"] = time()
+    s.clients[inp.type][token]["shard_number"] = "Waiting"
+    s.clients[inp.type][token]["progress"] = "Completed Job"
+    s.clients[inp.type][token]["jobs_completed"] += 1
+    s.clients[inp.type][token]["last_seen"] = time()
 
     try:
-        s.leaderboard[s.clients[token]["user_nickname"]][0] += 1
-        s.leaderboard[s.clients[token]["user_nickname"]][1] += inp.count
+        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
+        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
     except:
-        s.leaderboard[s.clients[token]["user_nickname"]] = [1, inp.count]
+        s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
     
     s.total_pairs += inp.count
      
@@ -387,19 +380,17 @@ async def markAsDone(inp: Optional[TokenCountInput] = None):
 
 
 @app.post('/api/bye', response_class=PlainTextResponse)
-async def bye(inp: Optional[TokenInput] = None):
-    if not inp:
-        raise HTTPException(status_code=500, detail="You appear to be using an old client. Please check the Crawling@Home website (http://crawlingathome.duckdns.org/) for the latest version numbers.")
+async def bye(inp: TokenInput):
     token = inp.token
-    if token not in s.clients:
+    if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     try:
-        s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
+        s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
     except:
         pass
 
-    del s.clients[token]
+    del s.clients[inp.type][token]
     
     return "success"
 
@@ -409,14 +400,15 @@ async def bye(inp: Optional[TokenInput] = None):
 
 async def check_idle(timeout):
     while True:
-        for client in list(s.clients.keys()):
-            if (time() - s.clients[client]["last_seen"]) > timeout:
-                try:
-                    s.pending_jobs.remove(str(s.clients[client]["shard_number"]))
-                except:
-                    pass
+        for type in ["HYBRID", "CPU", "GPU"]:
+            for client in list(s.clients[type].keys()):
+                if (time() - s.clients[type][client]["last_seen"]) > timeout:
+                    try:
+                        s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
+                    except:
+                        pass
 
-                del s.clients[client]
+                    del s.clients[type][client]
 
         await asyncio.sleep(30)
 
