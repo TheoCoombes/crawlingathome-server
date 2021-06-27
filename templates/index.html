@@ -21,9 +21,9 @@
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Connected Workers - {{ "{:,}".format(clients | length) }}</h2>
+        <h2>Connected Hybrid Workers - {{ "{:,}".format(clients["HYBRID"] | length) }}</h2>
         <br>
-        {% if (clients | length) != 0 %}
+        {% if (clients["HYBRID"] | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -37,9 +37,9 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for worker in (clients.values() | list)[-150:] %}
+                            {% for worker in (clients["HYBRID"].values() | list)[-150:] %}
                                 <tr>
-                                    <th scope="row"><a href="/worker/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    <th scope="row"><a href="/worker/hybrid/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
@@ -52,9 +52,9 @@
                                 </tr>
                             {% endfor %}
                     {% else %}
-                        {% for worker in clients.values() %}
+                        {% for worker in clients["HYBRID"].values() %}
                                 <tr>
-                                    <th scope="row"><a href="/worker/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    <th scope="row"><a href="/worker/hybrid/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
@@ -74,9 +74,127 @@
                 <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
-            <p>All jobs have been completed, thank you!</p>
+            <p>All jobs have been completed!</p>
         {% else %}
-            <p>There are no jobs running yet - <a href="/install">be the first</a>.</p>
+            <p>There are no hybrid workers currently running.</p>
+        {% endif %}
+        <br><br>
+        
+        <h2>Connected CPU Workers - {{ "{:,}".format(clients["CPU"] | length) }}</h2>
+        <br>
+        {% if (clients["CPU"] | length) != 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Shard #</th>
+                    <th scope="col">Shard Progress</th>
+                    <th scope="col">Jobs Completed</th>
+                    <th scope="col">Owner's Nickname</th>
+                    <th scope="col">Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if not all %}
+                            {% for worker in (clients["CPU"].values() | list)[-150:] %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/cpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
+                                </tr>
+                            {% endfor %}
+                    {% else %}
+                        {% for worker in clients["CPU"].values() %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/cpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
+                                </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+            <br>
+            {% if (clients | length) > 150 and not all %}
+                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
+            {% endif %}
+        {% elif completion == 100.0 %}
+            <p>All jobs have been completed!</p>
+        {% else %}
+            <p>There are no CPU workers currently running.</p>
+        {% endif %}
+        <br><br>
+        
+        <h2>Connected GPU Workers - {{ "{:,}".format(clients["GPU"] | length) }}</h2>
+        <br>
+        {% if (clients["GPU"] | length) != 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Shard #</th>
+                    <th scope="col">Shard Progress</th>
+                    <th scope="col">Jobs Completed</th>
+                    <th scope="col">Owner's Nickname</th>
+                    <th scope="col">Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if not all %}
+                            {% for worker in (clients["GPU"].values() | list)[-150:] %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/gpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
+                                </tr>
+                            {% endfor %}
+                    {% else %}
+                        {% for worker in clients["GPU"].values() %}
+                                <tr>
+                                    <th scope="row"><a href="/worker/gpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
+                                    {% if worker["shard_number"] == "Waiting" %}
+                                        <td><i>Waiting</i></td>
+                                    {% else %}
+                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
+                                    {% endif %}
+                                    <td>{{ worker["progress"] }}</td>
+                                    <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
+                                    <td>{{ worker["user_nickname"] }}</td>
+                                    <td class="timestamp">{{ worker["last_seen"] }}</td>
+                                </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+            <br>
+            {% if (clients | length) > 150 and not all %}
+                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
+            {% endif %}
+        {% elif completion == 100.0 %}
+            <p>All jobs have been completed!</p>
+        {% else %}
+            <p>There are no GPU workers currently running.</p>
         {% endif %}
         <br><br>
         <h2>Links</h2>
@@ -101,7 +219,7 @@
 
         <br><br>
 
-        Server Version: v2.2.1 <br>
+        Server Version: v2.4.0 <br>
         Latest Client Version: v1.3.1 <br><br>
 
         <script src="https://cdn.jsdelivr.net/gh/TheoCoombes/crawlingathome-server@main/cdn/main.js"></script>
