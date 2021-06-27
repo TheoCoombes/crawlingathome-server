@@ -87,11 +87,14 @@ async def leaderboard_page(request: Request):
 
 @app.get('/stats', response_class=HTMLResponse)
 async def stats():
-    return raw_text_stats.format(s.progress_str, s.completion, len(s.clients), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
+    return raw_text_stats.format(s.progress_str, s.completion, (len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"])), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
 
 
 @app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
 async def worker_info(type: str, worker: str, request: Request):
+    type = type.upper()
+    if type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
         w = s.clients[s.worker_cache[type][worker]]
     else:
@@ -106,7 +109,7 @@ async def worker_info(type: str, worker: str, request: Request):
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
-        return templates.TemplateResponse('worker.html', {"request": request, **w})
+        return templates.TemplateResponse('worker.html', {"request": request, **w, "type": type})
 
 
 @app.get('/data')
@@ -126,8 +129,11 @@ async def data():
 
 @app.get('/worker/{type}/{worker}/data')
 async def worker_data(type: str, worker: str):
+    type = type.upper()
+    if type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        return s.clients[s.worker_cache[type][worker]]
+        return {**s.clients[s.worker_cache[type][worker]], "type": type}
     
     w = None
     for token in s.clients[type]:
@@ -140,7 +146,7 @@ async def worker_data(type: str, worker: str):
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
-        return w
+        return {**w, "type": type}
             
         
 # ADMIN START ------
