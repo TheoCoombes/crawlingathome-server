@@ -6,7 +6,11 @@ class DataLoader:
         
 
     def _load(self):
-        self.clients = {}
+        self.clients = {
+            "HYBRID": {},
+            "GPU": {},
+            "CPU": {}
+        }
 
         with open("jobs/shard_info.json", "r") as f:
             self.shard_info = json.load(f)
