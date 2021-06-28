@@ -109,7 +109,7 @@ async def worker_info(type: str, worker: str, request: Request):
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
-        return templates.TemplateResponse('worker.html', {"request": request, **w, "type": type})
+        return templates.TemplateResponse('worker.html', {"request": request, **w})
 
 
 @app.get('/data')
@@ -133,7 +133,7 @@ async def worker_data(type: str, worker: str):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        return {**s.clients[s.worker_cache[type][worker]], "type": type}
+        return s.clients[s.worker_cache[type][worker]]
     
     w = None
     for token in s.clients[type]:
@@ -146,7 +146,7 @@ async def worker_data(type: str, worker: str):
     if not w:
         raise HTTPException(status_code=500, detail="Worker not found.")
     else:
-        return {**w, "type": type}
+        return w
             
         
 # ADMIN START ------
@@ -174,7 +174,7 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
                     pass
                 break
                 
-                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
                 s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
                 s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -200,7 +200,7 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
         except:
             return {"status": "failed", "detail": "Shard not found!"}
                 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -251,7 +251,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
         s.total_pairs += inp.count
 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -282,7 +282,8 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         "first_seen": ctime,
         "last_seen": ctime,
         "user_nickname": nickname,
-        "display_name": display_name
+        "display_name": display_name,
+        "type": type
     }
 
     s.clients[type][uuid] = worker_data
@@ -308,39 +309,52 @@ async def newJob(inp: TokenInput):
     if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
-    if s.clients[inp.type][token]["shard_number"] != "Waiting":
-        try:
-            s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
-        except:
-            pass
+    if inp.type == "GPU":
+        for i in s.open_gpu:
+            if i[0] in s.pending_gpu:
+                continue
+            else:
+                s.pending_gpu.append(i[0])
+                
+                s.clients[inp.type][token]["shard_number"] = int(i[0])
+                s.clients[inp.type][token]["progress"] = "Recieved new job"
+                s.clients[inp.type][token]["last_seen"] = time()
+                
+                return {"url": i[1]}
+    else:
+        if s.clients[inp.type][token]["shard_number"] != "Waiting":
+            try:
+                s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
+            except:
+                pass
 
-    c = 0
-    shard = s.open_jobs[c]
-    
-    count = (np.int64(shard["end_id"]) / 1000000) * 2
-    if shard["shard"] == 0:
-        count -= 1
-    
-    count = int(count)
-    
-    while str(count) in s.pending_jobs or str(count) in s.closed_jobs:
-        c += 1
+        c = 0
         shard = s.open_jobs[c]
-        
+
         count = (np.int64(shard["end_id"]) / 1000000) * 2
         if shard["shard"] == 0:
             count -= 1
-        
+
         count = int(count)
-    
-    s.pending_jobs.append(str(count))
-    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
 
-    s.clients[inp.type][token]["shard_number"] = count
-    s.clients[inp.type][token]["progress"] = "Recieved new job"
-    s.clients[inp.type][token]["last_seen"] = time()
+        while str(count) in s.pending_jobs or str(count) in s.closed_jobs or str(count) in [i[0] for i in s.open_gpu]:
+            c += 1
+            shard = s.open_jobs[c]
 
-    return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
+            count = (np.int64(shard["end_id"]) / 1000000) * 2
+            if shard["shard"] == 0:
+                count -= 1
+
+            count = int(count)
+
+        s.pending_jobs.append(str(count))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+
+        s.clients[inp.type][token]["shard_number"] = count
+        s.clients[inp.type][token]["progress"] = "Recieved new job"
+        s.clients[inp.type][token]["last_seen"] = time()
+
+        return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
@@ -376,30 +390,58 @@ async def markAsDone(inp: TokenCountInput):
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if str(s.clients[inp.type][token]["shard_number"]) in s.closed_jobs:
-        return "job already completed, not raising error"
+    if inp.type == "CPU":
+        if not inp.url:
+            raise HTTPException(status_code=500, detail="The worker did not submit a URL!")
+            
+        s.open_gpu.append([
+            str(s.clients[inp.type][token]["shard_number"]),
+            inp.url
+        ])
         
-    s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-    s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
-    s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs)))
-    
-    s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-    s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+        s.clients[inp.type][token]["shard_number"] = "Waiting"
+        s.clients[inp.type][token]["progress"] = "Completed Job"
+        s.clients[inp.type][token]["jobs_completed"] += 1
+        s.clients[inp.type][token]["last_seen"] = time()
+        
+        return "success"
+    else:
+        if not inp.count:
+            raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
+            
+        if str(s.clients[inp.type][token]["shard_number"]) in s.closed_jobs:
+            return "job already completed, not raising error"
+        
+        if inp.type == "GPU":
+            for i in s.open_gpu:
+                if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+                    s.open_gpu.remove(i)
+                    break
+            
+            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+        else:
+            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            
+        s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
-    s.clients[inp.type][token]["shard_number"] = "Waiting"
-    s.clients[inp.type][token]["progress"] = "Completed Job"
-    s.clients[inp.type][token]["jobs_completed"] += 1
-    s.clients[inp.type][token]["last_seen"] = time()
+        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
 
-    try:
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
-    except:
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
-    
-    s.total_pairs += inp.count
-     
-    return "success"
+        s.clients[inp.type][token]["shard_number"] = "Waiting"
+        s.clients[inp.type][token]["progress"] = "Completed Job"
+        s.clients[inp.type][token]["jobs_completed"] += 1
+        s.clients[inp.type][token]["last_seen"] = time()
+
+        try:
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
+        except:
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
+
+        s.total_pairs += inp.count
+
+        return "success"
 
 
 @app.post('/api/bye', response_class=PlainTextResponse)
