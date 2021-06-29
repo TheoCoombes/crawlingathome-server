@@ -25,7 +25,7 @@ class DataLoader:
             self.leaderboard = json.load(f)
         
         with open("jobs/open_gpu.json", "r") as f:
-            self.gpu_jobs = json.load(f)
+            self.open_gpu = json.load(f)
 
         self.pending_jobs = []
         self.pending_gpu = []
