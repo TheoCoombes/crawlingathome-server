@@ -31,8 +31,6 @@ templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
 
-raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Workers:</strong> {}<br><strong>Alt-Text Pairs Scraped:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many workers connected to the server to prevent slow loading times.</i>"    
-
 
 # REQUEST INPUTS START ------
 
@@ -85,18 +83,13 @@ async def leaderboard_page(request: Request):
     return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 
-@app.get('/stats', response_class=HTMLResponse)
-async def stats():
-    return raw_text_stats.format(s.progress_str, s.completion, (len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"])), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
-
-
 @app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
 async def worker_info(type: str, worker: str, request: Request):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        w = s.clients[s.worker_cache[type][worker]]
+        w = s.clients[type][s.worker_cache[type][worker]]
     else:
         w = None
         for token in s.clients[type]:
@@ -133,7 +126,7 @@ async def worker_data(type: str, worker: str):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        return s.clients[s.worker_cache[type][worker]]
+        return s.clients[type][s.worker_cache[type][worker]]
     
     w = None
     for token in s.clients[type]:
