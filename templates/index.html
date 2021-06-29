@@ -70,7 +70,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients | length) > 150 and not all %}
+            {% if (clients["HYBRID"] | length) > 150 and not all %}
                 <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
@@ -129,7 +129,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients | length) > 150 and not all %}
+            {% if (clients["CPU"] | length) > 150 and not all %}
                 <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
@@ -188,7 +188,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients | length) > 150 and not all %}
+            {% if (clients["GPU"] | length) > 150 and not all %}
                 <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
