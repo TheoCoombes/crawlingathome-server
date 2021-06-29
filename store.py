@@ -34,7 +34,11 @@ class DataLoader:
 
         self.total_pairs = sum([self.leaderboard[i][1] for i in self.leaderboard])
         
-        self.worker_cache = {}
+        self.worker_cache = {
+            "HYBRID": {},
+            "GPU": {},
+            "CPU": {}
+        }
         
         self.jobs_remaining = len(self.open_jobs) - (len(self.pending_jobs) + len(self.closed_jobs))
 
