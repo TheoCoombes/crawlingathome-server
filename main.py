@@ -149,43 +149,45 @@ async def worker_data(type: str, worker: str):
         
 # ADMIN START ------
 
+
 @app.post('/admin/ban-shard')
 async def ban_shard(inp: BanShardCountInput, request: Request):
-    if inp.password == ADMIN_PASSWORD:
-        user_count = inp.count
-        count = None
-        index = None
-        for i, shard in enumerate(s.open_jobs):
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
+    return {"status": "failed", "detail": "obsolete endpoint"}
+#     if inp.password == ADMIN_PASSWORD:
+#         user_count = inp.count
+#         count = None
+#         index = None
+#         for i, shard in enumerate(s.open_jobs):
+#             count = (np.int64(shard["end_id"]) / 1000000) * 2
+#             if shard["shard"] == 0:
+#                 count -= 1
             
-            if int(count) == user_count:
-                index = i
-                try:
-                    s.pending_jobs.remove(str(count))
-                except:
-                    pass
-                try:
-                    s.closed_jobs.remove(str(count))
-                except:
-                    pass
-                break
+#             if int(count) == user_count:
+#                 index = i
+#                 try:
+#                     s.pending_jobs.remove(str(count))
+#                 except:
+#                     pass
+#                 try:
+#                     s.closed_jobs.remove(str(count))
+#                 except:
+#                     pass
+#                 break
                 
-                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+#                 s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
-                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+#                 s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+#                 s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
         
         
-        if index is None:
-            return {"status": "failed", "detail": "Could not find that shard."}
-        else:
-            del s.open_jobs[index]
+#         if index is None:
+#             return {"status": "failed", "detail": "Could not find that shard."}
+#         else:
+#             del s.open_jobs[index]
         
-        return {"status": "success"}
-    else:
-        return {"status": "failed", "detail": "You are not an admin!"}
+#         return {"status": "success"}
+#     else:
+#         return {"status": "failed", "detail": "You are not an admin!"}
 
 
 @app.post('/admin/reset-shard')
@@ -195,7 +197,7 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
         
         try:
             s.closed_jobs.remove(str(user_count))
-        except:
+        except ValueError:
             return {"status": "failed", "detail": "Shard not found!"}
                 
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
@@ -219,10 +221,10 @@ async def lookup_wat(inp: LookupWatInput):
         if s.shard_info["directory"] + shard["url"] == inp.url:
             shards.append([i + 1, shard])
     
-    if len(shards) != 2:
-        return {"status": "failed", "detail": "Segment partially completed."}
+    if len(shards) == 0:
+        return {"status": "failed", "detail": "Could not find WAT/WARC."}
     elif (str(shards[1][0]) in s.pending_jobs or str(shards[1][0]) in s.closed_jobs) or (str(shards[0][0]) in s.pending_jobs or str(shards[0][0]) in s.closed_jobs):
-        return {"status": "failed", "detail": "Segment already completed."}
+        return {"status": "failed", "detail": "Segment already (partially/fully) completed."}
     else:
         return {"status": "success", "shards": shards}
     
@@ -244,7 +246,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         try:
             s.leaderboard[inp.nickname][0] += existed
             s.leaderboard[inp.nickname][1] += inp.count
-        except:
+        except KeyError:
             s.leaderboard[inp.nickname] = [existed, inp.count]
 
         s.total_pairs += inp.count
@@ -325,7 +327,7 @@ async def newJob(inp: TokenInput):
         if s.clients[inp.type][token]["shard_number"] != "Waiting":
             try:
                 s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
-            except:
+            except ValueError:
                 pass
 
         c = 0
@@ -425,7 +427,10 @@ async def markAsDone(inp: TokenCountInput):
             
             s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
         else:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            try:
+                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            except ValueError:
+                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
             
         s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
@@ -441,7 +446,7 @@ async def markAsDone(inp: TokenCountInput):
         try:
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
-        except:
+        except KeyError:
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
 
         s.total_pairs += inp.count
@@ -464,7 +469,7 @@ async def gpuInvalidDownload(inp: TokenInput):
     
     try:
         s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-    except:
+    except ValueError:
         pass
     
     return "success"
@@ -480,7 +485,7 @@ async def bye(inp: TokenInput):
 
     try:
         s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-    except:
+    except ValueError:
         pass
 
     del s.clients[inp.type][token]
