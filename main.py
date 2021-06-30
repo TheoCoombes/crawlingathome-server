@@ -46,9 +46,14 @@ class TokenProgressInput(BaseModel):
 
 class TokenCountInput(BaseModel): # For marking as done
     token: str
-    count: Optional[int] = None  # `count` is for HYBRID/GPU
-    url: Optional[str] = None    # `url` is for CPU
     type: Optional[str] = "HYBRID"
+        
+    count: Optional[int] = None  # `count` is for HYBRID/GPU
+    
+    url: Optional[str] = None    # CPU vvv
+    start_id: Optional[str] = None
+    end_id: Optional[str] = None
+    shard: Optional[int] = None
 
 class BanShardCountInput(BaseModel):
     password: str
@@ -313,7 +318,7 @@ async def newJob(inp: TokenInput):
                 s.clients[inp.type][token]["progress"] = "Recieved new job"
                 s.clients[inp.type][token]["last_seen"] = time()
                 
-                return {"url": i[1]}
+                return i[1]
     else:
         if s.clients[inp.type][token]["shard_number"] != "Waiting":
             try:
@@ -384,12 +389,17 @@ async def markAsDone(inp: TokenCountInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     if inp.type == "CPU":
-        if not inp.url:
-            raise HTTPException(status_code=500, detail="The worker did not submit a URL!")
+        if not inp.url or not inp.start_id or not inp.end_id or not inp.shard:
+            raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
             
         s.open_gpu.append([
             str(s.clients[inp.type][token]["shard_number"]),
-            inp.url
+            {
+                "url": inp.url,
+                "start_id": inp.start_id,
+                "end_id": inp.end_id,
+                "shard": inp.shard
+            }
         ])
         
         s.clients[inp.type][token]["shard_number"] = "Waiting"
@@ -437,6 +447,27 @@ async def markAsDone(inp: TokenCountInput):
         return "success"
 
 
+@app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
+async def gpuInvalidDownload(inp: TokenInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+    token = inp.token
+    if token not in s.clients[inp.type]:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
+    
+    for i in s.open_gpu:
+        if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+            s.open_gpu.remove(i)
+            break
+    
+    try:
+        s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+    except:
+        pass
+    
+    return "success"
+
+    
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
     if inp.type not in types:
