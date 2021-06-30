@@ -562,7 +562,7 @@ async def shutdown_event():
             json.dump(s.leaderboard, f)
         
         with open("jobs/open_gpu.json", "w") as f:
-                json.dump(s.open_gpu, f)
+            json.dump(s.open_gpu, f)
 
         
 @app.exception_handler(StarletteHTTPException)
