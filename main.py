@@ -484,7 +484,10 @@ async def bye(inp: TokenInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     try:
-        s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+        if inp.type == "GPU":
+            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+        else:
+            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
     except ValueError:
         pass
 
@@ -502,7 +505,10 @@ async def check_idle(timeout):
             for client in list(s.clients[type].keys()):
                 if (time() - s.clients[type][client]["last_seen"]) > timeout:
                     try:
-                        s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
+                        if type == "GPU":
+                            s.pending_gpu.remove(str(s.clients[type][client]["shard_number"]))
+                        else:
+                            s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
                     except:
                         pass
 
