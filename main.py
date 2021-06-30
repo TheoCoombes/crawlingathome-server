@@ -266,7 +266,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if s.jobs_remaining == "0":
+    if s.jobs_remaining == "0" and type != "GPU":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
