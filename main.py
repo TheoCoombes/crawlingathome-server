@@ -319,6 +319,8 @@ async def newJob(inp: TokenInput):
                 s.clients[inp.type][token]["last_seen"] = time()
                 
                 return i[1]
+            
+        raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
     else:
         if s.clients[inp.type][token]["shard_number"] != "Waiting":
             try:
