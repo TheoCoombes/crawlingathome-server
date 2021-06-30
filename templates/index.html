@@ -37,7 +37,7 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for worker in (clients["HYBRID"].values() | list)[-150:] %}
+                            {% for worker in (clients["HYBRID"].values() | list)[-50:] %}
                                 <tr>
                                     <th scope="row"><a href="/worker/hybrid/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
@@ -70,8 +70,8 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients["HYBRID"] | length) > 150 and not all %}
-                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
+            {% if (clients["HYBRID"] | length) > 50 and not all %}
+                <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
             <p>All jobs have been completed!</p>
@@ -96,7 +96,7 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for worker in (clients["CPU"].values() | list)[-150:] %}
+                            {% for worker in (clients["CPU"].values() | list)[-50:] %}
                                 <tr>
                                     <th scope="row"><a href="/worker/cpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
@@ -129,8 +129,8 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients["CPU"] | length) > 150 and not all %}
-                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
+            {% if (clients["CPU"] | length) > 50 and not all %}
+                <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
             <p>All jobs have been completed!</p>
@@ -155,7 +155,7 @@
                 </thead>
                 <tbody>
                     {% if not all %}
-                            {% for worker in (clients["GPU"].values() | list)[-150:] %}
+                            {% for worker in (clients["GPU"].values() | list)[-50:] %}
                                 <tr>
                                     <th scope="row"><a href="/worker/gpu/{{ worker['display_name'] }}">{{ worker["display_name"] }}</a></th>
                                     {% if worker["shard_number"] == "Waiting" %}
@@ -188,8 +188,8 @@
                 </tbody>
             </table>
             <br>
-            {% if (clients["GPU"] | length) > 150 and not all %}
-                <i>Limited view to 150 workers. <a href="/?all=true">View All</a></i><br>
+            {% if (clients["GPU"] | length) > 50 and not all %}
+                <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion == 100.0 %}
             <p>All jobs have been completed!</p>
