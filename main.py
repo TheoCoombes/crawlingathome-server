@@ -19,11 +19,7 @@ from store import DataLoader, GPUList
 from config import *
 
 
-#if __name__ == "__main__":
 s = DataLoader()
-#else:
-# sleep(180)
-#   s = DataLoader(host=False)
 
     
 app = FastAPI()
