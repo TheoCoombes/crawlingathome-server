@@ -31,8 +31,6 @@ templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
 
-raw_text_stats = "<strong>Completion:</strong> {} ({}%)<br><strong>Connected Workers:</strong> {}<br><strong>Alt-Text Pairs Scraped:</strong> {}<br><br><strong>Job Info</strong><br>Open Jobs: {}<br>Current Jobs: {}<br>Closed Jobs: {}<br><br><br><i>This page should be used when there are many workers connected to the server to prevent slow loading times.</i>"    
-
 
 # REQUEST INPUTS START ------
 
@@ -49,9 +47,14 @@ class TokenProgressInput(BaseModel):
 
 class TokenCountInput(BaseModel): # For marking as done
     token: str
-    count: Optional[int] = None  # `count` is for HYBRID/GPU
-    url: Optional[str] = None    # `url` is for CPU
     type: Optional[str] = "HYBRID"
+        
+    count: Optional[int] = None  # `count` is for HYBRID/GPU
+    
+    url: Optional[str] = None    # CPU vvv
+    start_id: Optional[str] = None
+    end_id: Optional[str] = None
+    shard: Optional[int] = None
 
 class BanShardCountInput(BaseModel):
     password: str
@@ -86,18 +89,13 @@ async def leaderboard_page(request: Request):
     return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 
-@app.get('/stats', response_class=HTMLResponse)
-async def stats():
-    return raw_text_stats.format(s.progress_str, s.completion, (len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"])), s.total_pairs, len(s.open_jobs), len(s.pending_jobs), len(s.closed_jobs))
-
-
 @app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
 async def worker_info(type: str, worker: str, request: Request):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        w = s.clients[s.worker_cache[type][worker]]
+        w = s.clients[type][s.worker_cache[type][worker]]
     else:
         w = None
         for token in s.clients[type]:
@@ -134,7 +132,7 @@ async def worker_data(type: str, worker: str):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if worker in s.worker_cache[type]:
-        return s.clients[s.worker_cache[type][worker]]
+        return s.clients[type][s.worker_cache[type][worker]]
     
     w = None
     for token in s.clients[type]:
@@ -152,43 +150,45 @@ async def worker_data(type: str, worker: str):
         
 # ADMIN START ------
 
+
 @app.post('/admin/ban-shard')
 async def ban_shard(inp: BanShardCountInput, request: Request):
-    if inp.password == ADMIN_PASSWORD:
-        user_count = inp.count
-        count = None
-        index = None
-        for i, shard in enumerate(s.open_jobs):
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
+    return {"status": "failed", "detail": "obsolete endpoint"}
+#     if inp.password == ADMIN_PASSWORD:
+#         user_count = inp.count
+#         count = None
+#         index = None
+#         for i, shard in enumerate(s.open_jobs):
+#             count = (np.int64(shard["end_id"]) / 1000000) * 2
+#             if shard["shard"] == 0:
+#                 count -= 1
             
-            if int(count) == user_count:
-                index = i
-                try:
-                    s.pending_jobs.remove(str(count))
-                except:
-                    pass
-                try:
-                    s.closed_jobs.remove(str(count))
-                except:
-                    pass
-                break
+#             if int(count) == user_count:
+#                 index = i
+#                 try:
+#                     s.pending_jobs.remove(str(count))
+#                 except:
+#                     pass
+#                 try:
+#                     s.closed_jobs.remove(str(count))
+#                 except:
+#                     pass
+#                 break
                 
-                s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+#                 s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
-                s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-                s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+#                 s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+#                 s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
         
         
-        if index is None:
-            return {"status": "failed", "detail": "Could not find that shard."}
-        else:
-            del s.open_jobs[index]
+#         if index is None:
+#             return {"status": "failed", "detail": "Could not find that shard."}
+#         else:
+#             del s.open_jobs[index]
         
-        return {"status": "success"}
-    else:
-        return {"status": "failed", "detail": "You are not an admin!"}
+#         return {"status": "success"}
+#     else:
+#         return {"status": "failed", "detail": "You are not an admin!"}
 
 
 @app.post('/admin/reset-shard')
@@ -198,7 +198,7 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
         
         try:
             s.closed_jobs.remove(str(user_count))
-        except:
+        except ValueError:
             return {"status": "failed", "detail": "Shard not found!"}
                 
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
@@ -222,10 +222,10 @@ async def lookup_wat(inp: LookupWatInput):
         if s.shard_info["directory"] + shard["url"] == inp.url:
             shards.append([i + 1, shard])
     
-    if len(shards) != 2:
-        return {"status": "failed", "detail": "Segment partially completed."}
+    if len(shards) == 0:
+        return {"status": "failed", "detail": "Could not find WAT/WARC."}
     elif (str(shards[1][0]) in s.pending_jobs or str(shards[1][0]) in s.closed_jobs) or (str(shards[0][0]) in s.pending_jobs or str(shards[0][0]) in s.closed_jobs):
-        return {"status": "failed", "detail": "Segment already completed."}
+        return {"status": "failed", "detail": "Segment already (partially/fully) completed."}
     else:
         return {"status": "success", "shards": shards}
     
@@ -247,7 +247,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         try:
             s.leaderboard[inp.nickname][0] += existed
             s.leaderboard[inp.nickname][1] += inp.count
-        except:
+        except KeyError:
             s.leaderboard[inp.nickname] = [existed, inp.count]
 
         s.total_pairs += inp.count
@@ -269,7 +269,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if s.jobs_remaining == "0":
+    if s.jobs_remaining == "0" and type != "GPU":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
     display_name = newName()
@@ -325,12 +325,14 @@ async def newJob(inp: TokenInput):
                 # s.clients[inp.type][token]["progress"] = "Recieved new job"
                 # s.clients[inp.type][token]["last_seen"] = time()
                 
-                return {"url": i[1]}
+                return i[1]
+            
+        raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
     else:
         if s.clients[inp.type][token]["shard_number"] != "Waiting":
             try:
                 s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
-            except:
+            except ValueError:
                 pass
 
         c = 0
@@ -399,12 +401,17 @@ async def markAsDone(inp: TokenCountInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     if inp.type == "CPU":
-        if not inp.url:
-            raise HTTPException(status_code=500, detail="The worker did not submit a URL!")
+        if not inp.url or not inp.start_id or not inp.end_id or not inp.shard:
+            raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
             
         s.open_gpu.append([
             str(s.clients[inp.type][token]["shard_number"]),
-            inp.url
+            {
+                "url": inp.url,
+                "start_id": inp.start_id,
+                "end_id": inp.end_id,
+                "shard": inp.shard
+            }
         ])
         
         s.clients[inp.type][token]["shard_number"] = "Waiting"
@@ -428,7 +435,18 @@ async def markAsDone(inp: TokenCountInput):
         if str(s.clients[inp.type][token]["shard_number"]) in s.closed_jobs:
             return "job already completed, not raising error"
         
-        s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+        if inp.type == "GPU":
+            for i in s.open_gpu:
+                if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+                    s.open_gpu.remove(i)
+                    break
+            
+            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+        else:
+            try:
+                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            except ValueError:
+                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
             
         s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
@@ -441,17 +459,38 @@ async def markAsDone(inp: TokenCountInput):
         s.clients[inp.type][token]["jobs_completed"] += 1
         s.clients[inp.type][token]["last_seen"] = time()
 
-    try:
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
-    except:
-        s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
-
+        try:
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
+        except KeyError:
+            s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
+            
     s.total_pairs += inp.count
 
     return "success"
 
 
+@app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
+async def gpuInvalidDownload(inp: TokenInput):
+    if inp.type not in types:
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+    token = inp.token
+    if token not in s.clients[inp.type]:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
+    
+    for i in s.open_gpu:
+        if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+            s.open_gpu.remove(i)
+            break
+    
+    try:
+        s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+    except ValueError:
+        pass
+    
+    return "success"
+
+    
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
     if inp.type not in types:
@@ -461,8 +500,11 @@ async def bye(inp: TokenInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     try:
-        s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-    except:
+        if inp.type == "GPU":
+            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+        else:
+            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+    except ValueError:
         pass
 
     del s.clients[inp.type][token]
@@ -479,7 +521,10 @@ async def check_idle(timeout):
             for client in list(s.clients[type].keys()):
                 if (time() - s.clients[type][client]["last_seen"]) > timeout:
                     try:
-                        s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
+                        if type == "GPU":
+                            s.pending_gpu.remove(str(s.clients[type][client]["shard_number"]))
+                        else:
+                            s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
                     except:
                         pass
 
@@ -577,7 +622,7 @@ async def shutdown_event():
             json.dump(s.leaderboard, f)
         
         with open("jobs/open_gpu.json", "w") as f:
-                json.dump(s.open_gpu, f)
+            json.dump(s.open_gpu, f)
 
         
 @app.exception_handler(StarletteHTTPException)
