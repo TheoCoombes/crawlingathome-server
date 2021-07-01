@@ -401,7 +401,7 @@ async def markAsDone(inp: TokenCountInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
     if inp.type == "CPU":
-        if not inp.url or not inp.start_id or not inp.end_id or not inp.shard:
+        if inp.url is None or inp.start_id is None or inp.end_id is None or inp.shard is None:
             raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
             
         s.open_gpu.append([
