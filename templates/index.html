@@ -162,7 +162,7 @@
                                     {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
-                                        <td>{{ '; '.join(["{:,}".format(num) for num in worker["shard_number"]]) }}</td>
+                                        <td>{{ ["{:,}".format(num) for num in worker["shard_number"]] | join(", ") }}</td>
                                     {% endif %}
                                     <td>{{ '; '.join(worker["progress"]) }}</td>
                                     <td>{{ "{:,}".format(len(worker)) }}</td>
