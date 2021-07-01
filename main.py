@@ -403,6 +403,8 @@ async def markAsDone(inp: TokenCountInput):
     if inp.type == "CPU":
         if inp.url is None or inp.start_id is None or inp.end_id is None or inp.shard is None:
             raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
+        if s.clients[inp.type][token]["shard_number"] == "Waiting":
+            raise HTTPException(status_code=500, detail="You do not have an open job.")
             
         s.open_gpu.append([
             str(s.clients[inp.type][token]["shard_number"]),
