@@ -1,6 +1,7 @@
 # Crawling@Home Server
 A server powering Crawling@Home's effort to filter CommonCrawl with CLIP, building a large scale image-text dataset.
 * Client Repo: [TheoCoombes/crawlingathome](https://github.com/TheoCoombes/crawlingathome)
+* Worker Repo: [Wikidepia/crawlingathome-worker](https://github.com/Wikidepia/crawlingathome-worker)
 * Live Server: http://crawlingathome.duckdns.org/
 
 ## UPDATE
