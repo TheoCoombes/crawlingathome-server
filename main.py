@@ -14,7 +14,7 @@ from uuid import uuid4
 import numpy as np
 import json
 
-from store import DataLoader, GPUList
+from store import DataLoader
 
 from config import *
 
@@ -39,7 +39,6 @@ class TokenProgressInput(BaseModel):
     token: str
     progress: str
     type: Optional[str] = "HYBRID"
-    shard_id: Optional[int] = 0
 
 class TokenCountInput(BaseModel): # For marking as done
     token: str
@@ -272,19 +271,16 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
     uuid = str(uuid4())
     ctime = time()
 
-    if type == 'GPU':
-        worker_data = GPUList(ctime, nickname, display_name)
-    else:
-        worker_data = {
-            "shard_number": "Waiting",
-            "progress": "Initialized",
-            "jobs_completed": 0,
-            "first_seen": ctime,
-            "last_seen": ctime,
-            "user_nickname": nickname,
-            "display_name": display_name,
-            "type": type
-        }
+    worker_data = {
+        "shard_number": "Waiting",
+        "progress": "Initialized",
+        "jobs_completed": 0,
+        "first_seen": ctime,
+        "last_seen": ctime,
+        "user_nickname": nickname,
+        "display_name": display_name,
+        "type": type
+    }
 
     s.clients[type][uuid] = worker_data
 
@@ -292,7 +288,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
-async def validate(inp: TokenInput):
+async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     return str(inp.token in s.clients[inp.type])
@@ -316,10 +312,9 @@ async def newJob(inp: TokenInput):
             else:
                 s.pending_gpu.append(i[0])
                 
-                s.clients[inp.type][token].newJob(int(i[0]))
-                # s.clients[inp.type][token]["shard_number"] = int(i[0])
-                # s.clients[inp.type][token]["progress"] = "Recieved new job"
-                # s.clients[inp.type][token]["last_seen"] = time()
+                s.clients[inp.type][token]["shard_number"] = int(i[0])
+                s.clients[inp.type][token]["progress"] = "Recieved new job"
+                s.clients[inp.type][token]["last_seen"] = time()
                 
                 return i[1]
             
@@ -379,11 +374,8 @@ async def updateProgress(inp: TokenProgressInput):
     if token not in s.clients[inp.type]:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
-    if inp.shard_id:
-        s.clients[inp.type][token].updateProgress(inp.shard_id, inp.progress)
-    else:
-        s.clients[inp.type][token]["progress"] = inp.progress
-        s.clients[inp.type][token]["last_seen"] = time()
+    s.clients[inp.type][token]["progress"] = inp.progress
+    s.clients[inp.type][token]["last_seen"] = time()
     
     return "success"
 
@@ -418,14 +410,6 @@ async def markAsDone(inp: TokenCountInput):
         s.clients[inp.type][token]["last_seen"] = time()
         
         return "success"
-    elif inp.type == "GPU":
-        for i in s.open_gpu:
-            if i[0] == str(s.clients[inp.type][token]["shard_number"]):
-                s.open_gpu.remove(i)
-                break
-            
-        s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-        s.clients[inp.type][token].completeJob()
     else:
         if not inp.count:
             raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
