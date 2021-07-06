@@ -2,9 +2,8 @@ import json
 from time import time
 
 class DataLoader:
-    def __init__(self, host=False):
+    def __init__(self):
         self._load()
-        
 
     def _load(self):
         self.clients = {
