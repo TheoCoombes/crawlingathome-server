@@ -213,9 +213,12 @@ async def lookup_wat(inp: LookupWatInput):
         return {"status": "failed", "detail": "Invalid password."}
     
     shards = []
-    for i, shard in enumerate(s.open_jobs):
+    for shard in s.open_jobs:
         if s.shard_info["directory"] + shard["url"] == inp.url:
-            shards.append([i + 1, shard])
+            count = (np.int64(shard["end_id"]) / 1000000) * 2
+            if shard["shard"] == 0:
+                count -= 1
+            shards.append([int(count), shard])
     
     if len(shards) == 0:
         return {"status": "failed", "detail": "Could not find WAT/WARC."}
@@ -235,6 +238,13 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
             continue
         else:
+            for sd in s.open_jobs:
+                count = (np.int64(sd["end_id"]) / 1000000) * 2
+                if sd["shard"] == 0:
+                    count -= 1
+                if int(count) == shard:
+                    s.open_jobs.remove(sd)
+                    break
             s.closed_jobs.append(str(shard))
             existed += 1
     
@@ -429,8 +439,17 @@ async def markAsDone(inp: TokenCountInput):
                 s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
             except ValueError:
                 raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-            
+             
         s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
+        
+        for shard in s.open_jobs:
+            count = (np.int64(shard["end_id"]) / 1000000) * 2
+            if shard["shard"] == 0:
+                count -= 1
+            if int(count) == s.clients[inp.type][token]["shard_number"]:
+                s.open_jobs.remove(shard)
+                break
+                
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
