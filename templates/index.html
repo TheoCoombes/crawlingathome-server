@@ -163,7 +163,7 @@
                                     {% else %}
                                        <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
                                     {% endif %}
-                                    <td>{{ '; '.join(worker["progress"]) }}</td>
+                                    <td>{{ worker["progress"] }}</td>
                                     <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
                                     <td>{{ worker["user_nickname"] }}</td>
                                     <td class="timestamp">{{ worker["last_seen"] }}</td>
