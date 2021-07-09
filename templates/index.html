@@ -148,7 +148,6 @@
                     <th scope="col">Name</th>
                     <th scope="col">Shard #</th>
                     <th scope="col">Shard Progress</th>
-                    <th scope="col">In-progress Jobs</th>
                     <th scope="col">Jobs Completed</th>
                     <th scope="col">Owner's Nickname</th>
                     <th scope="col">Last Seen</th>
@@ -162,13 +161,9 @@
                                     {% if worker["shard_number"] == "Waiting" %}
                                         <td><i>Waiting</i></td>
                                     {% else %}
-                                        {% for num in worker["shard_number"] %}
-                                            {{ "{:,}".format(num) }}
-                                            {% if not loop.last %}, {% endif %}
-                                        {% endfor %}
+                                       <td>{{ "{:,}".format(worker["shard_number"]) }}</td>
                                     {% endif %}
                                     <td>{{ '; '.join(worker["progress"]) }}</td>
-                                    <td>{{ "{:,}".format(len(worker)) }}</td>
                                     <td>{{ "{:,}".format(worker["jobs_completed"]) }}</td>
                                     <td>{{ worker["user_nickname"] }}</td>
                                     <td class="timestamp">{{ worker["last_seen"] }}</td>
