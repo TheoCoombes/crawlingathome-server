@@ -510,6 +510,9 @@ async def bye(inp: TokenInput):
 
     del s.clients[inp.type][token]
     
+    if token in s.worker_cache[inp.type]:
+        del s.worker_cache[inp.type][token]
+    
     return "success"
 
 
@@ -528,6 +531,9 @@ async def check_idle(timeout):
                             s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
                     except:
                         pass
+                    
+                    if client in s.worker_cache[type]:
+                        del s.worker_cache[type][client]
 
                     del s.clients[type][client]
 
