@@ -404,6 +404,11 @@ async def markAsDone(inp: TokenCountInput):
             raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
         if s.clients[inp.type][token]["shard_number"] == "Waiting":
             raise HTTPException(status_code=500, detail="You do not have an open job.")
+        
+        try:
+            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+        except ValueError:
+            raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
             
         s.open_gpu.append([
             str(s.clients[inp.type][token]["shard_number"]),
@@ -424,9 +429,6 @@ async def markAsDone(inp: TokenCountInput):
     else:
         if not inp.count:
             raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
-            
-        if str(s.clients[inp.type][token]["shard_number"]) in s.closed_jobs:
-            return "job already completed, not raising error"
         
         if inp.type == "GPU":
             for i in s.open_gpu:
@@ -470,9 +472,9 @@ async def markAsDone(inp: TokenCountInput):
         except KeyError:
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
             
-    s.total_pairs += inp.count
+        s.total_pairs += inp.count
 
-    return "success"
+        return "success"
 
 
 @app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
