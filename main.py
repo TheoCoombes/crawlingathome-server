@@ -189,23 +189,24 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
 
 @app.post('/admin/reset-shard')
 async def reset_shard(inp: BanShardCountInput, request: Request):
-    if inp.password == ADMIN_PASSWORD:
-        user_count = inp.count
+    return {"status": "failed", "detail": "obsolete endpoint"}
+#     if inp.password == ADMIN_PASSWORD:
+#         user_count = inp.count
         
-        try:
-            s.closed_jobs.remove(str(user_count))
-        except ValueError:
-            return {"status": "failed", "detail": "Shard not found!"}
+#         try:
+#             s.closed_jobs.remove(str(user_count))
+#         except ValueError:
+#             return {"status": "failed", "detail": "Shard not found!"}
                 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
+#         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
-        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+#         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
+#         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
          
         
-        return {"status": "success"}
-    else:
-        return {"status": "failed", "detail": "You are not an admin!"}
+#         return {"status": "success"}
+#     else:
+#         return {"status": "failed", "detail": "You are not an admin!"}
     
     
 @app.post('/custom/lookup-wat')
