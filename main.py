@@ -434,10 +434,15 @@ async def markAsDone(inp: TokenCountInput):
                     s.open_gpu.remove(i)
                     break
             
-        try:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-        except ValueError:
-            raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
+            try:
+                s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+            except ValueError:
+                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
+        else:
+            try:
+                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            except ValueError:
+                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
              
         s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
         
