@@ -171,7 +171,7 @@ async def ban_shard(inp: BanShardCountInput, request: Request):
 #                     pass
 #                 break
                 
-#                 s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+#                 s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
 #                 s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
 #                 s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -197,7 +197,7 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
         except ValueError:
             return {"status": "failed", "detail": "Shard not found!"}
                 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -258,7 +258,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
         s.total_pairs += inp.count
 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -357,7 +357,7 @@ async def newJob(inp: TokenInput):
             count = int(count)
 
         s.pending_jobs.append(str(count))
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
         s.clients[inp.type][token]["shard_number"] = count
         s.clients[inp.type][token]["progress"] = "Recieved new job"
@@ -449,7 +449,7 @@ async def markAsDone(inp: TokenCountInput):
                 s.open_jobs.remove(shard)
                 break
                 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.closed_jobs) + len(s.open_gpu)))
+        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
