@@ -5,3 +5,4 @@ aiofiles
 uvicorn
 asyncio
 numpy
+aiofiles
