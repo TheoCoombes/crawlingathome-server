@@ -25,8 +25,8 @@
                     {% for user, data in leaderboard.items() %}
                         <tr>
                             <th scope="row">{{ user }}</th>
-                            <td>{{ data[0] }}</td>
-			                <td>{{ data[1] }}</td>
+                            <td>{{ "{:,}".format(data[0]) }}</td>
+			                <td>{{ "{:,}".format(data[1]) }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
