@@ -40,7 +40,7 @@ class DataLoader:
             "CPU": {}
         }
         
-        self.jobs_remaining = str(len(self.open_jobs) - len(self.pending_jobs))
+        self.jobs_remaining = str(len(self.open_jobs) - (len(self.pending_jobs) + len(self.open_gpu)))
 
         try:
             self.completion = (len(self.closed_jobs) / self.total_jobs) * 100
