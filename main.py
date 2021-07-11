@@ -584,28 +584,33 @@ async def calculate_eta():
 
         
 async def save_jobs_leaderboard():
-    a = len(s.closed_jobs)
-    b = sum([s.leaderboard[i][1] for i in s.leaderboard])
-    c = len(s.open_gpu)
+    a = len(s.open_jobs)
+    b = len(s.closed_jobs)
+    c = sum([s.leaderboard[i][1] for i in s.leaderboard])
+    d = len(s.open_gpu)
     while True:
         await asyncio.sleep(300)
-
+        
+        w = len(s.open_jobs)
+        if a != w:
+            async with aiofiles.open("jobs/open.json", "w") as f:
+                await f.write(json.dumps(s.open_jobs))
         x = len(s.closed_jobs)
-        if a != x:
-            with open("jobs/closed.json", "w") as f:
-                json.dump(s.closed_jobs, f)
+        if b != x:
+            async with aiofiles.open("jobs/closed.json", "w") as f:
+                await f.write(json.dumps(s.closed_jobs))
         y = sum([s.leaderboard[i][1] for i in s.leaderboard])
-        if b != y:
-            with open("jobs/leaderboard.json", "w") as f:
-                json.dump(s.leaderboard, f)
+        if c != y:
+            async with aiofiles.open("jobs/leaderboard.json", "w") as f:
+                await f.write(json.dumps(s.leaderboard))
         z = len(s.open_gpu)
-        if c != z:
-            with open("jobs/open_gpu.json", "w") as f:
-                json.dump(s.open_gpu, f)
+        if d != z:
+            async with aiofiles.open("jobs/open_gpu.json", "w") as f:
+                await f.write(json.dumps(s.open_gpu))
 
-        a = x
-        b = y
-        c = z
+        a = w
+        b = x
+        c = y
         
 
 # FASTAPI UTILITIES START ------ 
@@ -622,14 +627,17 @@ async def app_startup():
 @app.on_event('shutdown')
 async def shutdown_event():
     if __name__ == "__main__":
-        with open("jobs/closed.json", "w") as f:
-            json.dump(s.closed_jobs, f)
-
-        with open("jobs/leaderboard.json", "w") as f:
-            json.dump(s.leaderboard, f)
+        async with aiofiles.open("jobs/open.json", "w") as f:
+            await f.write(json.dumps(s.open_jobs))
         
-        with open("jobs/open_gpu.json", "w") as f:
-            json.dump(s.open_gpu, f)
+        async with aiofiles.open("jobs/closed.json", "w") as f:
+            await f.write(json.dumps(s.closed_jobs))
+        
+        async with aiofiles.open("jobs/leaderboard.json", "w") as f:
+            await f.write(json.dumps(s.leaderboard))
+        
+        async with aiofiles.open("jobs/open_gpu.json", "w") as f:
+            await f.write(json.dumps(s.open_gpu))
 
         
 @app.exception_handler(StarletteHTTPException)
