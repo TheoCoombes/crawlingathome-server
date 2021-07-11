@@ -222,9 +222,7 @@ async def lookup_wat(inp: LookupWatInput):
             shards.append([int(count), shard])
     
     if len(shards) == 0:
-        return {"status": "failed", "detail": "Could not find WAT/WARC."}
-    elif (str(shards[1][0]) in s.pending_jobs or str(shards[1][0]) in s.closed_jobs) or (str(shards[0][0]) in s.pending_jobs or str(shards[0][0]) in s.closed_jobs):
-        return {"status": "failed", "detail": "Segment already (partially/fully) completed."}
+        return {"status": "failed", "detail": "All shards have already been completed by another worker."}
     else:
         return {"status": "success", "shards": shards}
     
@@ -265,7 +263,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         
         return {"status": "success"}
     else:
-        return {"status": "failed", "detail": "Another worker has already finished this job."}
+        return {"status": "failed", "detail": "All shards have already been completed by another worker."}
             
     
 # API START ------
