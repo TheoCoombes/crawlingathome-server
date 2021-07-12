@@ -332,7 +332,7 @@ async def newJob(inp: TokenInput):
     else:
         if s.clients[inp.type][token]["shard_number"] != "Waiting":
             try:
-                s.pending_jobs.remove(str(s.clients[token]["shard_number"]))
+                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
             except ValueError:
                 pass
 
