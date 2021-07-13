@@ -21,3 +21,8 @@ ADMIN_PASSWORD = "password"
 
 # CACHE
 MAX_WORKER_CACHE_SIZE = 250 # The max amount of {nickname: token} caches stored before early ones are erased. (for looking up workers' details)
+
+# UPLOAD URLS
+UPLOAD_URLS = [
+    ""
+]
