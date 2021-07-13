@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as newName
 from time import time, sleep
+from random import choice
 from uuid import uuid4
 import numpy as np
 import aiofiles
@@ -294,7 +295,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 
     s.clients[type][uuid] = worker_data
 
-    return {"display_name": display_name, "token": uuid}
+    return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
@@ -302,6 +303,11 @@ async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     return str(inp.token in s.clients[inp.type])
+
+
+@app.get('/api/getUploadAddress', response_class=PlainTextResponse)
+async def getUploadAddress():
+    return choice(UPLOAD_URLS)
 
 
 @app.post('/api/newJob')
