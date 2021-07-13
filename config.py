@@ -24,5 +24,5 @@ MAX_WORKER_CACHE_SIZE = 250 # The max amount of {nickname: token} caches stored 
 
 # UPLOAD URLS
 UPLOAD_URLS = [
-    ""
+    "archiveteam@88.198.2.17::CAH"
 ]
