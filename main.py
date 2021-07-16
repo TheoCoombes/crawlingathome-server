@@ -278,7 +278,6 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if s.jobs_remaining == "0" and type != "GPU":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
-    display_name = newName()
     uuid = str(uuid4())
     ctime = time()
 
@@ -289,20 +288,20 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         "first_seen": ctime,
         "last_seen": ctime,
         "user_nickname": nickname,
-        "display_name": display_name,
         "type": type
     }
 
-    s.clients[type][uuid] = worker_data
+    await s.redis.hmset(type + "_" + uuid, worker_data)
+    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT)
 
-    return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
+    return {"display_name": uuid, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
 async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    return str(inp.token in s.clients[inp.type])
+    return str(await s.redis.exists(inp.type + "_" + inp.token) > 0)
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
@@ -314,10 +313,11 @@ async def getUploadAddress():
 async def newJob(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
+    if not await s.redis.exists(inp.type + "_" + inp.token):
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
+    
     if s.jobs_remaining == "0":
         raise HTTPException(status_code=503, detail="No new jobs available.")
     
@@ -328,17 +328,24 @@ async def newJob(inp: TokenInput):
             else:
                 s.pending_gpu.append(i[0])
                 
-                s.clients[inp.type][token]["shard_number"] = int(i[0])
-                s.clients[inp.type][token]["progress"] = "Recieved new job"
-                s.clients[inp.type][token]["last_seen"] = time()
+                await s.redis.hmset(
+                    inp.type + "_" + inp.token,
+                    {
+                        "shard_number": int(i[0]),
+                        "progress": "Recieved new job",
+                        "last_seen": time()
+                    }
+                )
                 
                 return i[1]
             
         raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
     else:
-        if s.clients[inp.type][token]["shard_number"] != "Waiting":
+        sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
+        
+        if sn != "Waiting":
             try:
-                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+                s.pending_jobs.remove(str(sn))
             except ValueError:
                 pass
 
@@ -363,10 +370,15 @@ async def newJob(inp: TokenInput):
 
         s.pending_jobs.append(str(count))
         s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
-
-        s.clients[inp.type][token]["shard_number"] = count
-        s.clients[inp.type][token]["progress"] = "Recieved new job"
-        s.clients[inp.type][token]["last_seen"] = time()
+        
+        await s.redis.hmset(
+            inp.type + "_" + inp.token,
+            {
+                "shard_number": count,
+                "progress": "Recieved new job",
+                "last_seen": time()
+            }
+        )
 
         return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
 
@@ -386,12 +398,18 @@ async def jobCount(type: Optional[str] = "HYBRID"):
 async def updateProgress(inp: TokenProgressInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
-    s.clients[inp.type][token]["progress"] = inp.progress
-    s.clients[inp.type][token]["last_seen"] = time()
+    if not await s.redis.exists(inp.type + "_" + inp.token):
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
+    
+    await s.redis.hmset(
+        inp.type + "_" + inp.token,
+        {
+            "progress": inp.progress,
+            "last_seen": time()
+        }
+    )
     
     return "success"
 
@@ -400,10 +418,13 @@ async def updateProgress(inp: TokenProgressInput):
 async def markAsDone(inp: TokenCountInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
+    if not await s.redis.exists(inp.type + "_" + inp.token):
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        
+    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
+    
+    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
+    
     if inp.type == "CPU":
         if inp.url is None or inp.start_id is None or inp.end_id is None or inp.shard is None:
             raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
@@ -411,12 +432,12 @@ async def markAsDone(inp: TokenCountInput):
             raise HTTPException(status_code=500, detail="You do not have an open job.")
         
         try:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+            s.pending_jobs.remove(str(sn))
         except ValueError:
             raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
             
         s.open_gpu.append([
-            str(s.clients[inp.type][token]["shard_number"]),
+            str(sn),
             {
                 "url": inp.url,
                 "start_id": inp.start_id,
@@ -425,10 +446,16 @@ async def markAsDone(inp: TokenCountInput):
             }
         ])
         
-        s.clients[inp.type][token]["shard_number"] = "Waiting"
-        s.clients[inp.type][token]["progress"] = "Completed Job"
-        s.clients[inp.type][token]["jobs_completed"] += 1
-        s.clients[inp.type][token]["last_seen"] = time()
+        await s.redis.hmset(
+            inp.type + "_" + inp.token,
+            {
+                "shard_number": "Waiting",
+                "progress": "Completed Job",
+                "last_seen": time()
+            }
+        )
+        
+        await s.redis.hincrby(inp.type + "_" + inp.token, "jobs_completed")
         
         return "success"
     else:
@@ -437,27 +464,27 @@ async def markAsDone(inp: TokenCountInput):
         
         if inp.type == "GPU":
             for i in s.open_gpu:
-                if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+                if i[0] == str(sn):
                     s.open_gpu.remove(i)
                     break
             
             try:
-                s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+                s.pending_gpu.remove(str(sn))
             except ValueError:
                 raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
         else:
             try:
-                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+                s.pending_jobs.remove(str(sn))
             except ValueError:
                 raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
              
-        s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
+        s.closed_jobs.append(str(sn))
         
         for shard in s.open_jobs:
             count = (np.int64(shard["end_id"]) / 1000000) * 2
             if shard["shard"] == 0:
                 count -= 1
-            if int(count) == s.clients[inp.type][token]["shard_number"]:
+            if int(count) == sn:
                 s.open_jobs.remove(shard)
                 break
                 
@@ -465,11 +492,17 @@ async def markAsDone(inp: TokenCountInput):
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
-
-        s.clients[inp.type][token]["shard_number"] = "Waiting"
-        s.clients[inp.type][token]["progress"] = "Completed Job"
-        s.clients[inp.type][token]["jobs_completed"] += 1
-        s.clients[inp.type][token]["last_seen"] = time()
+        
+        await s.redis.hmset(
+            inp.type + "_" + inp.token,
+            {
+                "shard_number": "Waiting",
+                "progress": "Completed Job",
+                "last_seen": time()
+            }
+        )
+        
+        await s.redis.hincrby(inp.type + "_" + inp.token, "jobs_completed")
 
         try:
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
@@ -486,19 +519,23 @@ async def markAsDone(inp: TokenCountInput):
 async def gpuInvalidDownload(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
+    if not await s.redis.exists(inp.type + "_" + inp.token):
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
+    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
     
     for i in s.open_gpu:
-        if i[0] == str(s.clients[inp.type][token]["shard_number"]):
+        if i[0] == str(sn):
             s.open_gpu.remove(i)
             break
     
     try:
-        s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
+        s.pending_gpu.remove(str(sn))
     except ValueError:
         pass
+    
+    await s.redis.hset(inp.type + "_" + inp.token, "last_seen", time())
     
     return "success"
 
@@ -507,48 +544,26 @@ async def gpuInvalidDownload(inp: TokenInput):
 async def bye(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
+    if not await s.redis.exists(inp.type + "_" + inp.token):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
 
+    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
+        
     try:
-        if inp.type == "GPU":
-            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-        else:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
+        if sn != "Waiting":
+            if inp.type == "GPU":
+                s.pending_gpu.remove(str(sn))
+            else:
+                s.pending_jobs.remove(str(sn))
     except ValueError:
         pass
 
-    del s.clients[inp.type][token]
-    
-    if token in s.worker_cache[inp.type]:
-        del s.worker_cache[inp.type][token]
+    await s.redis.delete(inp.type + "_" + inp.token)
     
     return "success"
 
 
 # TIMERS START ------
-
-
-async def check_idle(timeout):
-    while True:
-        for type in types:
-            for client in list(s.clients[type].keys()):
-                if (time() - s.clients[type][client]["last_seen"]) > timeout:
-                    try:
-                        if type == "GPU":
-                            s.pending_gpu.remove(str(s.clients[type][client]["shard_number"]))
-                        else:
-                            s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
-                    except:
-                        pass
-                    
-                    if client in s.worker_cache[type]:
-                        del s.worker_cache[type][client]
-
-                    del s.clients[type][client]
-
-        await asyncio.sleep(30)
 
         
 async def calculate_eta():
