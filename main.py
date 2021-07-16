@@ -86,26 +86,18 @@ async def leaderboard_page(request: Request):
     return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
 
 
-@app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
-async def worker_info(type: str, worker: str, request: Request):
+@app.get('/worker/{type}/{token}', response_class=HTMLResponse)
+async def worker_info(type: str, token: str, request: Request):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if worker in s.worker_cache[type]:
-        w = s.clients[type][s.worker_cache[type][worker]]
-    else:
-        w = None
-        for token in s.clients[type]:
-            if s.clients[type][token]["display_name"] == worker:
-                w = s.clients[type][token]
-                s.worker_cache[type][worker] = token
-                if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
-                    s.worker_cache[type].pop(0)
-                break
-    if not w:
+        
+    try:
+        data = await s.redis.hgetall(type + "_" + token)
+    except:
         raise HTTPException(status_code=500, detail="Worker not found.")
-    else:
-        return templates.TemplateResponse('worker.html', {"request": request, **w})
+    
+    return templates.TemplateResponse('worker.html', {"request": request, **data})
 
 
 @app.get('/data')
@@ -123,26 +115,16 @@ async def data():
     }
 
 
-@app.get('/worker/{type}/{worker}/data')
-async def worker_data(type: str, worker: str):
+@app.get('/worker/{type}/{token}/data')
+async def worker_data(type: str, token: str):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if worker in s.worker_cache[type]:
-        return s.clients[type][s.worker_cache[type][worker]]
     
-    w = None
-    for token in s.clients[type]:
-        if s.clients[type][token]["display_name"] == worker:
-            w = s.clients[type][token]
-            s.worker_cache[type][worker] = token
-            if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
-                s.worker_cache[type].pop(0)
-            break
-    if not w:
-        raise HTTPException(status_code=500, detail="Worker not found.")
+    try:
+        return await s.redis.hgetall(type + "_" + token)
     else:
-        return w
+        raise HTTPException(status_code=500, detail="Worker not found.")
             
         
 # ADMIN START ------
