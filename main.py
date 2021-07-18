@@ -619,6 +619,7 @@ async def save_jobs_leaderboard():
         a = w
         b = x
         c = y
+        d = z
         
 
 # FASTAPI UTILITIES START ------ 
