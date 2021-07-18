@@ -1,9 +1,19 @@
 import json
 from time import time
 
+import aioredis
+import asyncio
+
+
 class DataLoader:
     def __init__(self):
         self._load()
+    
+    async def _connectRedis(self, host, reset=True):
+        self.redis = aioredis.from_url(host)
+        if reset:
+            await self.redis.flushall(asyncronous=True)
+    
 
     def _load(self):
         self.clients = {
