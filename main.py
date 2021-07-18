@@ -238,9 +238,9 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         except KeyError:
             s.leaderboard[inp.nickname] = [existed, inp.count]
 
-        s.total_pairs += inp.count
+        await s.redis.incrby("total_pairs", amount=inp.count)
 
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
+        await s.redis.incrby("jobs_remaining", amount=-existed)
 
         s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
         s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
@@ -492,7 +492,7 @@ async def markAsDone(inp: TokenCountInput):
         except KeyError:
             s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
             
-        s.total_pairs += inp.count
+        await s.redis.incrby("total_pairs", amount=inp.count)
 
         return "success"
 
@@ -527,7 +527,7 @@ async def bye(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     if not await s.redis.exists(inp.type + "_" + inp.token):
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
 
     sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
         
@@ -619,7 +619,6 @@ async def save_jobs_leaderboard():
         a = w
         b = x
         c = y
-        d = z
         
 
 # FASTAPI UTILITIES START ------ 
