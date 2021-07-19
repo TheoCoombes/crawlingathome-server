@@ -10,25 +10,25 @@
 	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
         <h1>Crawling@Home Dashboard</h1>
         <br><br>
-        <h2>Worker: {{ display_name }}</h2>
+        <h2>Worker: {{ c.type }}_{{ c.uuid }}</h2>
         <br>
-        <strong>Worker Type:</strong> {{ type }}
+        <strong>Worker Type:</strong> {{ c.type }}
 	    <br><br>
-        <strong>First Seen:</strong> <span class="timestamp">{{ first_seen }}</span>
+        <strong>First Seen:</strong> <span class="timestamp">{{ c.first_seen }}</span>
 	    <br><br>
-        <strong>Last Seen:</strong> <span class="timestamp">{{ last_seen }}</span>
+        <strong>Last Seen:</strong> <span class="timestamp">{{ c.last_seen }}</span>
         <br><br>
-        <strong>Owner's Nickname:</strong> {{ user_nickname }}
+        <strong>Owner's Nickname:</strong> {{ c.user_nickname }}
 	    <br><br>
-        {% if shard_number == "Waiting" %}
+        {% if c.shard is None %}
             <strong>Currently Working on Shard:</strong> (not currently working on a shard)
         {% else %}
-            <strong>Currently Working on Shard:</strong> {{ '{:,}'.format(shard_number) }}
+            <strong>Currently Working on Shard:</strong> {{ '{:,}'.format(c.shard.number) }}
         {% endif %}
         <br><br>
-        <strong>Latest Progress Update:</strong> "{{ progress }}"
+        <strong>Latest Progress Update:</strong> "{{ c.progress }}"
         <br><br>
-        <strong>Total Shards Completed:</strong> {{ '{:,}'.format(jobs_completed) }}
+        <strong>Total Shards Completed:</strong> {{ '{:,}'.format(c.jobs_completed) }}
         <br><br><br>
 	    <a href="/worker/{{ type.lower() }}/{{ display_name }}/data">JSON Format</a>
 	    <br><br>
