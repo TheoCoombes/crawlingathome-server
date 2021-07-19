@@ -68,6 +68,9 @@ class Client(Model):
     # Client time information in a UTC epoch timestamp form. (helps with timeouts as well as calculating efficiency)
     first_seen = fields.IntField()
     last_seen = fields.IntField()
+    
+    def __str__(self):
+        return self.type + " Client with UUID " + self.uuid
 
     
 
