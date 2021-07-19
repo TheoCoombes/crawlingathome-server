@@ -17,8 +17,8 @@ import aiofiles
 import json
 
 from store import DataLoader
-
 from config import *
+from models import *
 
 
 s = DataLoader()
@@ -93,11 +93,11 @@ async def worker_info(type: str, token: str, request: Request):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     try:
-        data = await s.redis.hgetall(type + "_" + token)
+        data = await Client.get(uuid=token, type=type)
     except:
         raise HTTPException(status_code=500, detail="Worker not found.")
     
-    return templates.TemplateResponse('worker.html', {"request": request, **data})
+    return templates.TemplateResponse('worker.html', {"request": request, "c": data})
 
 
 @app.get('/data')
@@ -122,7 +122,16 @@ async def worker_data(type: str, token: str):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
-        return await s.redis.hgetall(type + "_" + token)
+        c = await Client.get(uuid=token, type=type)
+        return {
+            "shard_number": c.shard.number,
+            "progress": c.progress,
+            "jobs_completed": c.jobs_completed,
+            "first_seen": c.first_seen,
+            "last_seen": c.last_seen,
+            "user_nickname": c.user_nickname,
+            "type": c.type
+        }
     else:
         raise HTTPException(status_code=500, detail="Worker not found.")
             
@@ -197,13 +206,19 @@ async def lookup_wat(inp: LookupWatInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
-    shards = []
-    for shard in s.open_jobs:
-        if s.shard_info["directory"] + shard["url"] == inp.url:
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-            shards.append([int(count), shard])
+    body = []
+    
+    shards = await Job.filter(completed=False, pending=False, gpu=False, url=inp.url)
+    async for shard in shards:
+        body.append([
+            shard.number,
+            {
+                "url": shard.url,
+                "start_id": shard.start_id,
+                "end_id": shard.end_id,
+                "shard": shard.shard_of_chunk
+            }
+        ])
     
     if len(shards) == 0:
         return {"status": "failed", "detail": "All shards have already been completed by another worker."}
@@ -217,26 +232,23 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         return {"status": "failed", "detail": "Invalid password."}
     
     existed = 0
-    for shard in inp.shards:
-        if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
+    shards = await Job.filter(number__in=inp.shards)
+    
+    async for shard in shards:
+        if shard.closed or shard.pending:
             continue
         else:
-            for sd in s.open_jobs:
-                count = (np.int64(sd["end_id"]) / 1000000) * 2
-                if sd["shard"] == 0:
-                    count -= 1
-                if int(count) == shard:
-                    s.open_jobs.remove(sd)
-                    break
-            s.closed_jobs.append(str(shard))
+            await shard.update(completed=True, pending=False, gpu=False, completor=inp.nickname)
             existed += 1
     
     if existed > 0:
-        try:
-            s.leaderboard[inp.nickname][0] += existed
-            s.leaderboard[inp.nickname][1] += inp.count
-        except KeyError:
-            s.leaderboard[inp.nickname] = [existed, inp.count]
+        
+        user = await Leaderboard.get_or_create(nickname=inp.nickname)
+        
+        job_count = user.job_count += existed
+        pairs_scraped = user.pairs_scraped += inp.count
+        
+        await user.update(job_count=job_count, pairs_scraped=pairs_scraped)
 
         await s.redis.incrby("total_pairs", amount=inp.count)
 
@@ -257,24 +269,21 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if s.jobs_remaining == "0" and type != "GPU":
-        raise HTTPException(status_code=503, detail="No new jobs available.")
     
     uuid = str(uuid4())
-    ctime = time()
+    ctime = int(time())
 
     worker_data = {
-        "shard_number": "Waiting",
+        "uuid": uuid,
+        "type": type,
+        "user_nickname": nickname,
         "progress": "Initialized",
         "jobs_completed": 0,
         "first_seen": ctime,
         "last_seen": ctime,
-        "user_nickname": nickname,
-        "type": type
     }
-
-    await s.redis.hmset(type + "_" + uuid, worker_data)
-    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT)
+    
+    await Client.create(**worker_data)
 
     return {"display_name": uuid, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
@@ -283,7 +292,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    return str(await s.redis.exists(inp.type + "_" + inp.token) > 0)
+    return str(await Client.exists(uuid=inp.token, type=inp.type))
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
@@ -295,13 +304,9 @@ async def getUploadAddress():
 async def newJob(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+        
     if not await s.redis.exists(inp.type + "_" + inp.token):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
-    
-    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
-    
-    if s.jobs_remaining == "0":
-        raise HTTPException(status_code=503, detail="No new jobs available.")
     
     if inp.type == "GPU":
         for i in s.open_gpu:
