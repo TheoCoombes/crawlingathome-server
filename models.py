@@ -3,10 +3,9 @@ from tortoise import fields
 
 
 # Models for interacting with the SQL database.
-# DIAGRAM
-# Open_Jobs -> Pending_Jobs -> Closed_Jobs <---------¬
-#                                  OR                |
-#                             Open GPU jobs -> Pending GPU jobs
+# Job -> pending=True -> pending=False, completed=True
+# Job -> pending=True -> gpu=True, pending=False -> (same as above from pending=True)
+
 
 class Job(Model):
     """ The SQL Hybrid open jobs table. """
@@ -26,6 +25,7 @@ class Job(Model):
     
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
+    gpu = fields.BooleanField()
     completed = fields.BooleanField()
     
     # Initially contains the worker's token whilst being processed, but contains the owner's nickname on completion.
