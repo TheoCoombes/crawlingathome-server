@@ -24,8 +24,7 @@ class Job(Model):
     # The shard of the chunk: 0 = first 50%, 1 = last 50%.
     shard_of_chunk = fields.IntField()
     
-    # Contains information about the current progress, if this shard is currently being completed.
-    # 
+    # Contains information about the shard's completion.
     pending = fields.BooleanField()
     completed = fields.BooleanField()
     
@@ -43,6 +42,8 @@ class Job(Model):
             c = "Open"
         return c + " job with shard number #" + str(self.number)
 
+    
+    
 class Client(Model):
     """ The SQL Clients table. """
     
@@ -52,10 +53,40 @@ class Client(Model):
     # The type of client. (HYBRID/CPU/GPU)
     type = fields.CharField()
     
-    # The shard this client is currently processing.
-    shard = fields.ForeignKeyField("models.Job")
+    # User information.
+    user_nickname = fields.CharField()
     
+    # The shard this client is currently processing.
+    shard = fields.ForeignKeyField("models.Job", related_name="worker")
+    
+    # Progress information sent from the client. ( client.log(...) )
     progress = fields.CharField(max_length=255)
+    
+    # How many jobs this client has completed
     jobs_completed = fields.IntField()
     
+    # Client time information in a UTC epoch timestamp form. (helps with timeouts as well as calculating efficiency)
+    first_seen = fields.IntField()
+    last_seen = fields.IntField()
+
     
+
+class Leaderboard(Model):
+    """ The Hybrid/GPU job completion leaderboard. """
+    
+    # The user's nickname
+    nickname = fields.CharField(pk=True)
+    
+    # Data about the user.
+    jobs_completed = fields.IntField()
+    pairs_scraped = fields.IntField()
+
+    
+class CPU_Leaderboard(Model):
+    """ The CPU job completion leaderboard. """
+    
+    # The user's nickname
+    nickname = fields.CharField(pk=True)
+    
+    # Data about the user.
+    jobs_completed = fields.IntField()
