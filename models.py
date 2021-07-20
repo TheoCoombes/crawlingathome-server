@@ -29,10 +29,11 @@ class Job(Model):
     
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
-    completed = fields.BooleanField()
+    closed = fields.BooleanField()
     
-    # Initially contains the worker's token whilst being processed, but contains the owner's nickname on completion.
-    completor = fields.CharField()
+    # User data
+    completor = fields.CharField() # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
+    gpu_completor = fields.CharField() # (contains the GPU worker's user nickname on completion)
 
     
     # The shard in string format (for debugging)
