@@ -208,7 +208,7 @@ async def lookup_wat(inp: LookupWatInput):
     
     body = []
     
-    shards = await Job.filter(completed=False, pending=False, gpu=False, url=inp.url)
+    shards = await Job.filter(closed=False, pending=False, gpu=False, url=inp.url)
     async for shard in shards:
         body.append([
             shard.number,
@@ -232,17 +232,12 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         return {"status": "failed", "detail": "Invalid password."}
     
     existed = 0
-    shards = await Job.filter(number__in=inp.shards)
+    shards = await Job.filter(number__in=inp.shards, closed=False, pending=False)
     
-    async for shard in shards:
-        if shard.closed or shard.pending:
-            continue
-        else:
-            await shard.update(completed=True, pending=False, gpu=False, completor=inp.nickname)
-            existed += 1
+    existed = shards.count()
+    await shards.update(closed=True, pending=False, gpu=False, completor=inp.nickname)
     
     if existed > 0:
-        
         user = await Leaderboard.get_or_create(nickname=inp.nickname)
         
         job_count = user.job_count += existed
@@ -281,6 +276,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         "jobs_completed": 0,
         "first_seen": ctime,
         "last_seen": ctime,
+        "shard": None
     }
     
     await Client.create(**worker_data)
@@ -304,70 +300,34 @@ async def getUploadAddress():
 async def newJob(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-        
-    if not await s.redis.exists(inp.type + "_" + inp.token):
+    
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
-    if inp.type == "GPU":
-        for i in s.open_gpu:
-            if i[0] in s.pending_gpu:
-                continue
-            else:
-                s.pending_gpu.append(i[0])
-                
-                await s.redis.hmset(
-                    inp.type + "_" + inp.token,
-                    {
-                        "shard_number": int(i[0]),
-                        "progress": "Recieved new job",
-                        "last_seen": time()
-                    }
-                )
-                
-                return i[1]
-            
-        raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+    if client.shard is not None:
+        await client.shard.update(pending=False, completor=None)
+    
+    if inp.type == "GPU":         
+        try:
+            job = await Job.filter(pending=False, closed=False, gpu=True).first()
+        except:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+        
+        await job.update(pending=True, completor=inp.token)
+        await client.update(progress="Recieved new job", shard=job, last_seen=int(time()))
+        
+        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
     else:
-        sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
+        try:
+            job = await Job.filter(pending=False, closed=False, gpu=False).first()
+        except:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
-        if sn != "Waiting":
-            try:
-                s.pending_jobs.remove(str(sn))
-            except ValueError:
-                pass
-
-        c = 0
-        shard = s.open_jobs[c]
-
-        count = (np.int64(shard["end_id"]) / 1000000) * 2
-        if shard["shard"] == 0:
-            count -= 1
-
-        count = int(count)
-
-        while str(count) in s.pending_jobs or str(count) in s.closed_jobs or str(count) in [i[0] for i in s.open_gpu]:
-            c += 1
-            shard = s.open_jobs[c]
-
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-
-            count = int(count)
-
-        s.pending_jobs.append(str(count))
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
+        await client.update(progress="Recieved new job", shard=job, last_seen=int(time()))
         
-        await s.redis.hmset(
-            inp.type + "_" + inp.token,
-            {
-                "shard_number": count,
-                "progress": "Recieved new job",
-                "last_seen": time()
-            }
-        )
-
-        return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
+        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
@@ -376,27 +336,20 @@ async def jobCount(type: Optional[str] = "HYBRID"):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
-        return str(len(s.open_gpu) - len(s.pending_gpu))
+        return str(await Job.filter(gpu=True, closed=False, pending=False).count())
     else:
-        return s.jobs_remaining
+        return str(await Job.filter(gpu=False, closed=False, pending=False).count())
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
 async def updateProgress(inp: TokenProgressInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if not await s.redis.exists(inp.type + "_" + inp.token):
+    
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).update(progress=inp.progress, int(time()))
+    except:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
-    
-    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
-    
-    await s.redis.hmset(
-        inp.type + "_" + inp.token,
-        {
-            "progress": inp.progress,
-            "last_seen": time()
-        }
-    )
     
     return "success"
 
@@ -405,99 +358,35 @@ async def updateProgress(inp: TokenProgressInput):
 async def markAsDone(inp: TokenCountInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if not await s.redis.exists(inp.type + "_" + inp.token):
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
-        
-    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
     
-    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    if client.shard is None:
+        raise HTTPException(status_code=500, detail="You do not have an open job.")
+    if client.shard.closed:
+        raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
     
     if inp.type == "CPU":
         if inp.url is None or inp.start_id is None or inp.end_id is None or inp.shard is None:
             raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
-        if s.clients[inp.type][token]["shard_number"] == "Waiting":
-            raise HTTPException(status_code=500, detail="You do not have an open job.")
         
-        try:
-            s.pending_jobs.remove(str(sn))
-        except ValueError:
-            raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-            
-        s.open_gpu.append([
-            str(sn),
-            {
-                "url": inp.url,
-                "start_id": inp.start_id,
-                "end_id": inp.end_id,
-                "shard": inp.shard
-            }
-        ])
-        
-        await s.redis.hmset(
-            inp.type + "_" + inp.token,
-            {
-                "shard_number": "Waiting",
-                "progress": "Completed Job",
-                "last_seen": time()
-            }
-        )
-        
-        await s.redis.hincrby(inp.type + "_" + inp.token, "jobs_completed")
+        await client.shard.update(gpu=True, pending=False, gpu_url=inp.url, cpu_completor=client.user_nickname)
+        await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
+
+        # TODO Leaderboard_CPU
         
         return "success"
     else:
         if not inp.count:
             raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
         
-        if inp.type == "GPU":
-            for i in s.open_gpu:
-                if i[0] == str(sn):
-                    s.open_gpu.remove(i)
-                    break
-            
-            try:
-                s.pending_gpu.remove(str(sn))
-            except ValueError:
-                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-        else:
-            try:
-                s.pending_jobs.remove(str(sn))
-            except ValueError:
-                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-             
-        s.closed_jobs.append(str(sn))
-        
-        for shard in s.open_jobs:
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-            if int(count) == sn:
-                s.open_jobs.remove(shard)
-                break
-                
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
+        await client.shard.update(closed=True, pending=False, completor=client.user_nickname)
+        await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
 
-        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
-        
-        await s.redis.hmset(
-            inp.type + "_" + inp.token,
-            {
-                "shard_number": "Waiting",
-                "progress": "Completed Job",
-                "last_seen": time()
-            }
-        )
-        
-        await s.redis.hincrby(inp.type + "_" + inp.token, "jobs_completed")
-
-        try:
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
-        except KeyError:
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
-            
-        await s.redis.incrby("total_pairs", amount=inp.count)
+        # TODO leaderboard
 
         return "success"
 
@@ -509,20 +398,13 @@ async def gpuInvalidDownload(inp: TokenInput):
     if not await s.redis.exists(inp.type + "_" + inp.token):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
-    await s.redis.expire(type + "_" + uuid, IDLE_TIMEOUT) # Update timeout
-    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
-    
-    for i in s.open_gpu:
-        if i[0] == str(sn):
-            s.open_gpu.remove(i)
-            break
-    
     try:
-        s.pending_gpu.remove(str(sn))
-    except ValueError:
-        pass
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
-    await s.redis.hset(inp.type + "_" + inp.token, "last_seen", time())
+    await client.shard.update(gpu_url=None, gpu=False, pending=False, completor=None)
+    await client.update(shard=None, last_seen=int(time()))
     
     return "success"
 
@@ -531,26 +413,30 @@ async def gpuInvalidDownload(inp: TokenInput):
 async def bye(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if not await s.redis.exists(inp.type + "_" + inp.token):
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
-
-    sn = await s.redis.hget(inp.type + "_" + inp.token, "shard_number")
-        
+    
     try:
-        if sn != "Waiting":
-            if inp.type == "GPU":
-                s.pending_gpu.remove(str(sn))
-            else:
-                s.pending_jobs.remove(str(sn))
-    except ValueError:
-        pass
-
-    await s.redis.delete(inp.type + "_" + inp.token)
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        
+    if client.shard != None:
+        await client.shard.update(pending=False)
+    
+    await client.delete()
     
     return "success"
 
 
 # TIMERS START ------
+
+
+async def check_idle():
+    while True:
+        await asyncio.sleep(300)
+        t = int(time()) - IDLE_TIMEOUT
+        
+        await Client.filter(last_seen__lte=t, shard__not_isnull=True).select_related("shard").update(pending=False)
+        await Client.filter(last_seen__lte=t).delete()
 
         
 async def calculate_eta():
@@ -633,7 +519,7 @@ async def save_jobs_leaderboard():
 @app.on_event('startup')
 async def app_startup():
     if __name__ == "__main__":
-        asyncio.create_task(check_idle(IDLE_TIMEOUT))
+        asyncio.create_task(check_idle())
         asyncio.create_task(calculate_eta())
         asyncio.create_task(save_jobs_leaderboard())
 
