@@ -2,37 +2,60 @@
 
 <html>
 	<head>
-	<title>Crawling@Home Leaderboard</title>
-        <link href="https://cdn.jsdelivr.net/gh/TheoCoombes/crawlingathome-server@main/cdn/bootstrap.min.css" rel="stylesheet">
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-	<meta http-equiv="refresh" content="30">
+        <title>Crawling@Home Leaderboard</title>
+            <link href="https://cdn.jsdelivr.net/gh/TheoCoombes/crawlingathome-server@main/cdn/bootstrap.min.css" rel="stylesheet">
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <meta http-equiv="refresh" content="30">
 	</head>
 	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
         <h1>Crawling@Home Dashboard</h1>
         <br><br>
-        <h2>Leaderboard</h2>
+        <h2>Hybrid/GPU Leaderboard</h2>
         <br>
-        {% if (leaderboard | length) != 0 %}
+        {% if leaderboard.count() != 0 %}
             <table class="table">
                 <thead>
                     <tr>
-                    <th scope="col">Nickname</th>
-                    <th scope="col">Jobs Completed</th>
-	                <th scope="col">Image-Text Pairs Scraped</th>
+                        <th scope="col">Nickname</th>
+                        <th scope="col">Jobs Completed</th>
+                        <th scope="col">Image-Text Pairs Scraped</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user, data in leaderboard.items() %}
+                    {% for user in leaderboard %}
                         <tr>
-                            <th scope="row">{{ user }}</th>
-                            <td>{{ "{:,}".format(data[0]) }}</td>
-			                <td>{{ "{:,}".format(data[1]) }}</td>
+                            <th scope="row">{{ user.nickname }}</th>
+                            <td>{{ "{:,}".format(user.jobs_completed) }}</td>
+			                <td>{{ "{:,}".format(user.pairs_scraped) }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <p>There are no people on the leaderboard - <a href="/install">be the first</a>.</p>
+            <p>There are no people on the Hybrid/GPU leaderboard - <a href="/install">be the first</a>.</p>
+        {% endif %}
+        <br>
+        <h2>CPU Leaderboard</h2>
+        <br>
+        {% if cpu_leaderboard.count() != 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nickname</th>
+                        <th scope="col">Jobs Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in leaderboard %}
+                        <tr>
+                            <th scope="row">{{ user.nickname }}</th>
+                            <td>{{ "{:,}".format(user.jobs_completed) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>There are no people on the CPU leaderboard - <a href="/install">be the first</a>.</p>
         {% endif %}
         <br><br>
             <a href="/">Back</a>
