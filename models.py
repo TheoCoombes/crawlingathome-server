@@ -33,7 +33,7 @@ class Job(Model):
     
     # User data
     completor = fields.CharField() # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
-    gpu_completor = fields.CharField() # (contains the GPU worker's user nickname on completion)
+    cpu_completor = fields.CharField() # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
 
     
     # The shard in string format (for debugging)
