@@ -23,9 +23,12 @@ class Job(Model):
     # The shard of the chunk: 0 = first 50%, 1 = last 50%.
     shard_of_chunk = fields.IntField()
     
+    # GPU job information (not always used)
+    gpu = fields.BooleanField()
+    gpu_url = fields.CharField()
+    
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
-    gpu = fields.BooleanField()
     completed = fields.BooleanField()
     
     # Initially contains the worker's token whilst being processed, but contains the owner's nickname on completion.
