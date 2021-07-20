@@ -72,7 +72,7 @@ class MarkAsDoneInput(BaseModel):
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request, all: Optional[bool] = False):
+async def index(request: Request):
     return templates.TemplateResponse('index.html', {"request": request, "all": all, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
 
 
@@ -83,7 +83,9 @@ async def install(request: Request):
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
+    main_board = await Leaderboard.all()
+    cpu_board = await CPU_Leaderboard.all()
+    return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": board, "cpu_leaderboard": cpu_board})
 
 
 @app.get('/worker/{type}/{token}', response_class=HTMLResponse)
