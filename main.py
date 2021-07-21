@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 import asyncio
-from uvicorn import run
 from typing import Optional
 from pydantic import BaseModel
 from tortoise.contrib.fastapi import register_tortoise
@@ -96,7 +95,7 @@ async def worker_info(type: str, token: str, request: Request):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     try:
-        data = await Client.get(uuid=token, type=type)
+        data = await Client.get(uuid=token, type=type).prefetch_related("shard")
     except:
         raise HTTPException(status_code=500, detail="Worker not found.")
     
@@ -125,7 +124,7 @@ async def worker_data(type: str, token: str):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
-        c = await Client.get(uuid=token, type=type)
+        c = await Client.get(uuid=token, type=type).prefetch_related("shard")
         return {
             "shard_number": c.shard.number,
             "progress": c.progress,
@@ -328,6 +327,7 @@ async def newJob(inp: TokenInput):
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
+        await job.update(pending=True, completor=inp.token)
         await client.update(progress="Recieved new job", shard=job, last_seen=int(time()))
         
         return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
@@ -350,7 +350,7 @@ async def updateProgress(inp: TokenProgressInput):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
-        client = await Client.get(uuid=inp.token, type=inp.type).update(progress=inp.progress, int(time()))
+        await Client.get(uuid=inp.token, type=inp.type).update(progress=inp.progress, last_seen=int(time()))
     except:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
