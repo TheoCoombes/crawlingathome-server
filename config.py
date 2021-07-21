@@ -5,9 +5,8 @@ HOST = "0.0.0.0"
 PORT = 80
 # WORKERS_COUNT = 4 # Amount of CPU cores to dedicate to the server. [NOT CURRENTLY WORKING]
 
-# STORE CONFIG
-# STORE_PASSWORD = "password" # Password used to access the store.
-# STORE_PORT = 5000 # Store port.
+# DATABASE CONFIG
+SQL_DB_URL = "postgres://test_user:test_pass@localhost:5432/test_db" # Example config for a postgres database. Works with any databases supported by Tortoise ORM.
 
 # WORKER CONFIG
 IDLE_TIMEOUT = 10800 # The interval until a worker is kicked for being idle. (3 hours)
