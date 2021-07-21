@@ -570,4 +570,4 @@ register_tortoise(
 
 
 if __name__ == "__main__":
-    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT [multiprocessing was reverted for v2.1.0, will be added at a later date TBD]
+    print("From v3.0.0, you can no longer run this script directly from Python. Use gunicorn/uvicorn directly, using \"main:app\" as the server.")
