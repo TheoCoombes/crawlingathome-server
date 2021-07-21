@@ -379,7 +379,11 @@ async def markAsDone(inp: TokenCountInput):
         await client.shard.update(gpu=True, pending=False, gpu_url=inp.url, cpu_completor=client.user_nickname)
         await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
 
-        # TODO Leaderboard_CPU
+        user = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)
+        
+        job_count = user.job_count += 1
+        
+        await user.update(job_count=job_count)
         
         return "success"
     else:
@@ -389,7 +393,12 @@ async def markAsDone(inp: TokenCountInput):
         await client.shard.update(closed=True, pending=False, completor=client.user_nickname)
         await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
 
-        # TODO leaderboard
+        user = await Leaderboard.get_or_create(nickname=client.user_nickname)
+        
+        job_count = user.job_count += 1
+        pairs_scraped = user.pairs_scraped += inp.count
+        
+        await user.update(job_count=job_count, pairs_scraped=pairs_scraped)
 
         return "success"
 
