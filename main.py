@@ -6,6 +6,7 @@ import asyncio
 from uvicorn import run
 from typing import Optional
 from pydantic import BaseModel
+from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as newName
@@ -548,6 +549,15 @@ async def http_exception_handler(request, exc):
 
 
 # ------------------------------ 
+
+
+register_tortoise(
+    app,
+    db_url=SQL_DB_URL,
+    modules={"models": ["app_db"]},
+    generate_schemas=True,
+    add_exception_handlers=True,
+)
 
 
 if __name__ == "__main__":
