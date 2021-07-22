@@ -16,12 +16,8 @@ import numpy as np
 import aiofiles
 import json
 
-from store import DataLoader
 from config import *
 from models import *
-
-
-s = DataLoader()
 
     
 app = FastAPI()
