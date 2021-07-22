@@ -25,15 +25,15 @@ class Job(Model):
     
     # GPU job information (not always used)
     gpu = fields.BooleanField()
-    gpu_url = fields.CharField()
+    gpu_url = fields.CharField(null=True)
     
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
     closed = fields.BooleanField()
     
     # User data
-    completor = fields.CharField() # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
-    cpu_completor = fields.CharField() # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
+    completor = fields.CharField(null=True) # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
+    cpu_completor = fields.CharField(null=True) # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
 
     
     # The shard in string format (for debugging)
@@ -61,7 +61,7 @@ class Client(Model):
     user_nickname = fields.CharField()
     
     # The shard this client is currently processing.
-    shard = fields.ForeignKeyField("models.Job", related_name="worker")
+    shard = fields.ForeignKeyField("models.Job", related_name="worker", null=True)
     
     # Progress information sent from the client. ( client.log(...) )
     progress = fields.CharField(max_length=255)
