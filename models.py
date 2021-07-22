@@ -85,8 +85,8 @@ class Leaderboard(Model):
     nickname = fields.CharField(pk=True)
     
     # Data about the user.
-    jobs_completed = fields.IntField()
-    pairs_scraped = fields.IntField()
+    jobs_completed = fields.IntField(default=0)
+    pairs_scraped = fields.IntField(default=0)
 
     
 class CPU_Leaderboard(Model):
@@ -96,4 +96,4 @@ class CPU_Leaderboard(Model):
     nickname = fields.CharField(pk=True)
     
     # Data about the user.
-    jobs_completed = fields.IntField()
+    jobs_completed = fields.IntField(default=0)
