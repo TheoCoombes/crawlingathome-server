@@ -5,6 +5,10 @@ import numpy as np
 import json
 import gc
 
+# JSON -> SQL CONVERTER SCRIPT -----
+# You need a fresh `open.json` file named `original.json` stored in the jobs folder. (don't delete the existing open.json file)
+# You need your SQL database set up, and configured in config.py
+
 def _calculate_shard_number(job):
     count = (np.int64(job["end_id"]) / 1000000) * 2
     if job["shard"] == 0:
@@ -24,6 +28,8 @@ async def init():
     
     # 1. Jobs
     print("Processing jobs... (this may take a while)")
+    with open("jobs/shard_info.json", "r") as f:
+        directory = json.load(f)["directory"]
     with open("jobs/original.json", "r") as f:
         db = json.load(f)
     with open("job/open.json", "r") as f:
@@ -39,7 +45,7 @@ async def init():
         data = db[i-1]
         job = Job(
             number=i,
-            url=data["url"],
+            url=directory + data["url"],
             start_id=data["start_id"],
             end_id=data["end_id"],
             shard_of_chunk=data["shard"],
@@ -57,7 +63,7 @@ async def init():
         data = db[i-1]
         job = Job(
             number=i,
-            url=data["url"],
+            url=directory + data["url"],
             start_id=data["start_id"],
             end_id=data["end_id"],
             shard_of_chunk=data["shard"],
@@ -75,7 +81,7 @@ async def init():
         number = int(data[0])
         job = Job(
             number=number,
-            url=db[number-1]["url"],
+            url=directory + db[number-1]["url"],
             start_id=data[1]["start_id"],
             end_id=data[1]["end_id"],
             shard_of_chunk=data[1]["shard"],
