@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from name import new as newName
 from time import time, sleep
 from random import choice
 from uuid import uuid4
