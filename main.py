@@ -80,6 +80,10 @@ async def install(request: Request):
 async def leaderboard_page(request: Request):
     main_board = await Leaderboard.all()
     cpu_board = await CPU_Leaderboard.all()
+    async for _ in main_board:
+        pass
+    async for _ in cpu_board:
+        pass
     return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": board, "cpu_leaderboard": cpu_board})
 
 
@@ -99,16 +103,15 @@ async def worker_info(type: str, token: str, request: Request):
 
 @app.get('/data')
 async def data():
+    completion_str, completion_float, total_connected_workers, total_pairs, eta = await redis.mget(
+        ["completion_str", "completion", "clients", "total_pairs", "eta"]
+    )
     return {
-        "completion_str": s.progress_str,
-        "completion_float": s.completion,
-        "total_connected_workers": len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"]),
-        "total_pairs_scraped": s.total_pairs,
-        "open_jobs": len(s.open_jobs),
-        "pending_jobs": len(s.pending_jobs),
-        "closed_jobs": len(s.closed_jobs),
-        "leaderboard": s.leaderboard,
-        "eta": s.eta
+        "completion_str": completion_str,
+        "completion_float": completion_float,
+        "total_connected_workers": total_connected_workers,
+        "total_pairs_scraped": total_pairs,
+        "eta": eta
     }
 
 
@@ -243,6 +246,12 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 
         await redis.incrby("total_pairs", amount=inp.count)
         await redis.incrby("job_count", amount=-existed)
+        
+        total_jobs, job_count = await redis.mget(["total_jobs", "job_count"])
+        await redis.mset({
+            "completion": ((total_jobs - job_count) / total_jobs) * 100,
+            "progress_str": f"{(total_jobs - job_count):,} / {total_jobs:,}"
+        })
  
         return {"status": "success"}
     else:
@@ -272,7 +281,6 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
     }
     
     await redis.incrby("clients")
-    await redis.incrby(f"{type}_clients")
 
     return {"display_name": uuid, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
@@ -373,6 +381,15 @@ async def markAsDone(inp: TokenCountInput):
         user = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1))
         
+        await redis.incrby("job_count", amount=-1)
+        await redis.incrby("job_count_gpu", amount=1)
+        
+        total_jobs, job_count, gpu_count = await redis.mget(["total_jobs", "job_count", "job_count_gpu"])
+        await redis.mset({
+            "completion": ((total_jobs - (job_count - gpu_count)) / total_jobs) * 100,
+            "progress_str": f"{(total_jobs - (job_count - gpu_count)):,} / {total_jobs:,}"
+        })
+        
         return "success"
     else:
         if not inp.count:
@@ -383,6 +400,18 @@ async def markAsDone(inp: TokenCountInput):
 
         user = await Leaderboard.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1), pairs_scraped=(user.pairs_scraped + inp.count))
+        
+        await redis.incrby("total_pairs", amount=inp.count)
+        if inp.type == "GPU":
+            await redis.incrby("job_count_gpu", amount=-1)
+        else:
+            await redis.incrby("job_count", amount=-1)
+        
+        total_jobs, job_count, gpu_count = await redis.mget(["total_jobs", "job_count", "job_count_gpu"])
+        await redis.mset({
+            "completion": ((total_jobs - (job_count - gpu_count)) / total_jobs) * 100,
+            "progress_str": f"{(total_jobs - (job_count - gpu_count)):,} / {total_jobs:,}"
+        })
 
         return "success"
 
