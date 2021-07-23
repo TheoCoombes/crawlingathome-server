@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from name import new as new_name
 from time import time, sleep
 from random import choice
 from uuid import uuid4
@@ -114,14 +115,14 @@ async def leaderboard_page(request: Request):
     })
 
 
-@app.get('/worker/{type}/{token}', response_class=HTMLResponse)
-async def worker_info(type: str, token: str, request: Request):
+@app.get('/worker/{type}/{display_name}', response_class=HTMLResponse)
+async def worker_info(type: str, display_name: str, request: Request):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     try:
-        data = await Client.get(uuid=token, type=type).prefetch_related("shard")
+        data = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
     except:
         raise HTTPException(status_code=500, detail="Worker not found.")
     
@@ -143,15 +144,16 @@ async def data():
     }
 
 
-@app.get('/worker/{type}/{token}/data')
-async def worker_data(type: str, token: str):
+@app.get('/worker/{type}/{display_name}/data')
+async def worker_data(type: str, display_name: str):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
-        c = await Client.get(uuid=token, type=type).prefetch_related("shard")
+        c = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
         return {
+            "display_name": c.display_name,
             "shard_number": c.shard.number,
             "progress": c.progress,
             "jobs_completed": c.jobs_completed,
@@ -287,9 +289,11 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
     
     uuid = str(uuid4())
     ctime = int(time())
+    display_name = new_name()
 
     await Client.create(
         uuid=uuid,
+        display_name=display_name,
         type=type,
         user_nickname=nickname,
         progress="Initialized",
@@ -299,7 +303,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         shard=None
     }  
 
-    return {"display_name": uuid, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
+    return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
