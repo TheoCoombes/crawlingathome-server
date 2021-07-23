@@ -23,6 +23,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
+eta = "Calculating..."
 
 
 # REQUEST INPUTS START ------
@@ -67,24 +68,50 @@ class MarkAsDoneInput(BaseModel):
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse('index.html', {"request": request, "all": all, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
+async def index(request: Request, all: Optional[bool] = False):
+    # TODO cache class
+    
+    completed = await Job.filter(closed=True).count()
+    total = await Job.all().count()
+    
+    if all:
+        hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
+        cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
+        gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
+    else:
+        hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen")
+        cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
+        gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
+    
+    return templates.TemplateResponse('index.html', {
+        "request": request,
+        "all": all,
+        "hybrid_clients": hybrid_clients,
+        "cpu_clients": cpu_clients,
+        "gpu_clients": gpu_clients,
+        "completion_float": completed / total,
+        "completion_str": f"{completed:,} / {total:,}",
+        "total_pairs": sum([user.pairs_scraped for i in await Leaderboard.all()]),
+        "eta": eta
+    })
 
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
-    return templates.TemplateResponse('install.html', {"request": request})
+    return templates.TemplateResponse('install.html', {
+        "request": request
+    })
 
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    main_board = await Leaderboard.all()
-    cpu_board = await CPU_Leaderboard.all()
-    async for _ in main_board:
-        pass
-    async for _ in cpu_board:
-        pass
-    return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": board, "cpu_leaderboard": cpu_board})
+    # TODO cache class
+    
+    return templates.TemplateResponse('leaderboard.html', {
+        "request": request,
+        "leaderboard": await Leaderboard.all().order_by("jobs_completed"),
+        "cpu_leaderboard": await CPU_Leaderboard.all().order_by("jobs_completed")
+    })
 
 
 @app.get('/worker/{type}/{token}', response_class=HTMLResponse)
@@ -103,14 +130,15 @@ async def worker_info(type: str, token: str, request: Request):
 
 @app.get('/data')
 async def data():
-    completion_str, completion_float, total_connected_workers, total_pairs, eta = await redis.mget(
-        ["completion_str", "completion", "clients", "total_pairs", "eta"]
-    )
+    # TODO cache class
+    
+    completed = await Job.filter(closed=True).count()
+    total = await Job.all().count()
     return {
-        "completion_str": completion_str,
-        "completion_float": completion_float,
-        "total_connected_workers": total_connected_workers,
-        "total_pairs_scraped": total_pairs,
+        "completion_str": f"{completed:,} / {total:,}",
+        "completion_float": completed / total,
+        "total_connected_workers": await Client.all().count(),
+        "total_pairs_scraped": sum([user.pairs_scraped for i in await Leaderboard.all()]),
         "eta": eta
     }
 
@@ -243,15 +271,6 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         pairs_scraped = user.pairs_scraped += inp.count
         
         await user.update(job_count=job_count, pairs_scraped=pairs_scraped)
-
-        await redis.incrby("total_pairs", amount=inp.count)
-        await redis.incrby("job_count", amount=-existed)
-        
-        total_jobs, job_count = await redis.mget(["total_jobs", "job_count"])
-        await redis.mset({
-            "completion": ((total_jobs - job_count) / total_jobs) * 100,
-            "progress_str": f"{(total_jobs - job_count):,} / {total_jobs:,}"
-        })
  
         return {"status": "success"}
     else:
@@ -278,9 +297,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         first_seen=ctime,
         last_seen=ctime,
         shard=None
-    }
-    
-    await redis.incrby("clients")
+    }  
 
     return {"display_name": uuid, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
@@ -327,7 +344,7 @@ async def newJob(inp: TokenInput):
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
         await job.update(pending=True)
-        await client.update(shard=job, progress="Recieved new job", last_seen=int(time()))
+        await client.update(shard=job, progress="Recieved new job", last_seen=int(time()))         
         
         return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
 
@@ -338,9 +355,9 @@ async def jobCount(type: Optional[str] = "HYBRID"):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
-        return str(await redis.get("job_count_gpu"))
+        str(await Job.filter(pending=False, closed=False, gpu=True).count())
     else:
-        return str(await redis.get("job_count"))
+        str(await Job.filter(pending=False, closed=False, gpu=False).count())
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
@@ -381,14 +398,7 @@ async def markAsDone(inp: TokenCountInput):
         user = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1))
         
-        await redis.incrby("job_count", amount=-1)
-        await redis.incrby("job_count_gpu", amount=1)
-        
-        total_jobs, job_count, gpu_count = await redis.mget(["total_jobs", "job_count", "job_count_gpu"])
-        await redis.mset({
-            "completion": ((total_jobs - (job_count - gpu_count)) / total_jobs) * 100,
-            "progress_str": f"{(total_jobs - (job_count - gpu_count)):,} / {total_jobs:,}"
-        })
+        # completion + completion_str are not affected by CPU jobs.
         
         return "success"
     else:
@@ -400,18 +410,6 @@ async def markAsDone(inp: TokenCountInput):
 
         user = await Leaderboard.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1), pairs_scraped=(user.pairs_scraped + inp.count))
-        
-        await redis.incrby("total_pairs", amount=inp.count)
-        if inp.type == "GPU":
-            await redis.incrby("job_count_gpu", amount=-1)
-        else:
-            await redis.incrby("job_count", amount=-1)
-        
-        total_jobs, job_count, gpu_count = await redis.mget(["total_jobs", "job_count", "job_count_gpu"])
-        await redis.mset({
-            "completion": ((total_jobs - (job_count - gpu_count)) / total_jobs) * 100,
-            "progress_str": f"{(total_jobs - (job_count - gpu_count)):,} / {total_jobs:,}"
-        })
 
         return "success"
 
@@ -420,15 +418,17 @@ async def markAsDone(inp: TokenCountInput):
 async def gpuInvalidDownload(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if not await s.redis.exists(inp.type + "_" + inp.token):
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
-    await client.shard.update(gpu_url=None, gpu=False, pending=False, completor=None)
+    try:
+        await client.shard.update(gpu_url=None, gpu=False, pending=False, completor=None)
+    except:
+        raise HTTPException(status_code=500, detail="You are not currently working on a job!")
+    
     await client.update(shard=None, last_seen=int(time()))
     
     return "success"
@@ -482,11 +482,13 @@ async def calculate_eta():
         else:
             return f"{s} second{'s' if s!=1 else ''}"
 
+    global eta
+        
     dataset = []
     while True:
-        start = len(s.closed_jobs)
+        start = await Job.filter(closed=True).count()
         await asyncio.sleep(AVERAGE_INTERVAL)
-        end = len(s.closed_jobs)
+        end = await Job.filter(closed=True).count()
 
         dataset.append(end - start)
         if len(dataset) > AVERAGE_DATASET_LENGTH:
@@ -494,7 +496,7 @@ async def calculate_eta():
 
         mean = sum(dataset) / len(dataset)
         mean_per_second = mean / AVERAGE_INTERVAL
-        remaining = len(s.open_jobs) - len(s.pending_jobs)
+        remaining = await Job.filter(closed=False, pending=False, gpu=False).count()
 
         try:
             length = remaining // mean_per_second
@@ -502,9 +504,9 @@ async def calculate_eta():
             continue
         
         if length:
-            s.eta = _format_time(length)
+            eta = _format_time(length)
         else:
-            s.eta = "Finished"
+            eta = "Finished"
         
 
 # FASTAPI UTILITIES START ------ 
