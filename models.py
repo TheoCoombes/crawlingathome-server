@@ -3,7 +3,7 @@ from tortoise import fields
 
 
 # Models for interacting with the SQL database.
-# Job -> pending=True -> pending=False, completed=True
+# Job -> pending=True -> pending=False, closed=True
 # Job -> pending=True -> gpu=True, pending=False -> (same as above from pending=True)
 
 
@@ -53,6 +53,7 @@ class Client(Model):
     
     # The UUID of the client.
     uuid = fields.CharField(pk=True)
+    display_name = fields.CharField()
     
     # The type of client. (HYBRID/CPU/GPU)
     type = fields.CharField()
@@ -76,7 +77,7 @@ class Client(Model):
     def __str__(self):
         return self.type + " Client with UUID " + self.uuid
 
-    
+
 
 class Leaderboard(Model):
     """ The Hybrid/GPU job completion leaderboard. """
