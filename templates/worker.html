@@ -10,7 +10,7 @@
 	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
         <h1>Crawling@Home Dashboard</h1>
         <br><br>
-        <h2>Worker: {{ c.type }}_{{ c.uuid }}</h2>
+        <h2>Worker: {{ c.display_name }}</h2>
         <br>
         <strong>Worker Type:</strong> {{ c.type }}
 	    <br><br>
@@ -30,7 +30,7 @@
         <br><br>
         <strong>Total Shards Completed:</strong> {{ '{:,}'.format(c.jobs_completed) }}
         <br><br><br>
-	    <a href="/worker/{{ type.lower() }}/{{ display_name }}/data">JSON Format</a>
+	    <a href="/worker/{{ c.type.lower() }}/{{ c.display_name }}/data">JSON Format</a>
 	    <br><br>
 	    <a href="/">Back</a>
 	
