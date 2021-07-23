@@ -18,9 +18,11 @@ import json
 
 from config import *
 from models import *
+from cache import Cache
 
     
 app = FastAPI()
+cache = Cache()
 templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
@@ -70,11 +72,22 @@ class MarkAsDoneInput(BaseModel):
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
-    # TODO cache class
+    try:
+        body, expired = await cache.get_body_expired('/')
+        if not expired:
+            return HTMLResponse(content=body)
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
+    
+    # Render body
     
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
-    
+
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
@@ -83,8 +96,8 @@ async def index(request: Request, all: Optional[bool] = False):
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen")
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
-    
-    return templates.TemplateResponse('index.html', {
+
+    body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
         "hybrid_clients": hybrid_clients,
@@ -96,6 +109,12 @@ async def index(request: Request, all: Optional[bool] = False):
         "eta": eta
     })
 
+    # Set page cache with body.
+    await cache.set('/', body.content)
+
+    return body
+    
+
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
@@ -106,13 +125,27 @@ async def install(request: Request):
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    # TODO cache class
+    try:
+        body, expired = await cache.get_body_expired('/leaderboard')
+        if not expired:
+            return HTMLResponse(content=body)
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
     
-    return templates.TemplateResponse('leaderboard.html', {
+    body = templates.TemplateResponse('leaderboard.html', {
         "request": request,
         "leaderboard": await Leaderboard.all().order_by("jobs_completed"),
         "cpu_leaderboard": await CPU_Leaderboard.all().order_by("jobs_completed")
     })
+    
+    # Set page cache with body.
+    await cache.set('/leaderboard', body.content)
+    
+    return body
 
 
 @app.get('/worker/{type}/{display_name}', response_class=HTMLResponse)
@@ -131,17 +164,31 @@ async def worker_info(type: str, display_name: str, request: Request):
 
 @app.get('/data')
 async def data():
-    # TODO cache class
+    try:
+        body, expired = await cache.get_body_expired('/data')
+        if not expired:
+            return body
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
     
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
-    return {
+    body = {
         "completion_str": f"{completed:,} / {total:,}",
         "completion_float": completed / total,
         "total_connected_workers": await Client.all().count(),
         "total_pairs_scraped": sum([user.pairs_scraped for i in await Leaderboard.all()]),
         "eta": eta
     }
+    
+    # Set page cache with body.
+    await cache.set('/data', body)
+    
+    return body
 
 
 @app.get('/worker/{type}/{display_name}/data')
