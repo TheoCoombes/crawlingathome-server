@@ -12,7 +12,7 @@
         <br><br>
         <h2>Hybrid/GPU Leaderboard</h2>
         <br>
-        {% if len(leaderboard) != 0 %}
+        {% if (leaderboard | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -37,7 +37,7 @@
         <br>
         <h2>CPU Leaderboard</h2>
         <br>
-        {% if len(cpu_leaderboard) != 0 %}
+        {% if (cpu_leaderboard | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
