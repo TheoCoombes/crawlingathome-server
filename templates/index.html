@@ -12,9 +12,9 @@
         <br><br>
         <h2>Stats</h2>
         <br>
-        <strong>Completion: {{ "{0:.2f}".format(completion) }}%</strong> ({{ progress_str }} shards completed)
+        <strong>Completion: {{ "{0:.2f}".format(completion_float) }}%</strong> ({{ completion_str }} shards completed)
         <div class="progress">
-            <div class="progress-bar" role="progressbar" style="width: {{ completion }}%;" aria-valuenow='{{ completion }}' aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="progress-bar" role="progressbar" style="width: {{ completion_float }}%;" aria-valuenow='{{ completion_float }}' aria-valuemin="0" aria-valuemax="100"></div>
         </div>
         <br>
         <strong>{{ "{:,}".format(total_pairs) }}</strong> image-text pairs scraped (estimate)
@@ -56,7 +56,7 @@
             {% if (gpu_clients | length) > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
-        {% elif completion == 100.0 %}
+        {% elif completion_float == 100.0 %}
             <p>All jobs have been completed!</p>
         {% else %}
             <p>There are no hybrid workers currently running.</p>
@@ -98,7 +98,7 @@
             {% if (cpu_clients | length) > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
-        {% elif completion == 100.0 %}
+        {% elif completion_float == 100.0 %}
             <p>All jobs have been completed!</p>
         {% else %}
             <p>There are no CPU workers currently running.</p>
@@ -140,7 +140,7 @@
             {% if (gpu_clients | length) > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
-        {% elif completion == 100.0 %}
+        {% elif completion_float == 100.0 %}
             <p>All jobs have been completed!</p>
         {% else %}
             <p>There are no GPU workers currently running.</p>
