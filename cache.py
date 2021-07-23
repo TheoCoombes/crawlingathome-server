@@ -14,7 +14,7 @@ class Cache:
         """ Returns True if page `page` has expired in the cache. """
         return await self._redis.hget(page, "expires") > int(time())
     
-    async def set(self, page, body, expires_in=30) -> None:
+    async def set(self, page, body, expires_in: int = 60) -> None:
         """ Sets the page body `body` at page `page`. Expires after `expires_in` seconds. """
         await self._redis.hmset(page, {
             "body": body,
