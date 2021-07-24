@@ -201,7 +201,7 @@ async def worker_data(type: str, display_name: str):
         c = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
         return {
             "display_name": c.display_name,
-            "shard_number": c.shard.number,
+            "shard_number": c.shard.number if client.shard else "N/A",
             "progress": c.progress,
             "jobs_completed": c.jobs_completed,
             "first_seen": c.first_seen,
