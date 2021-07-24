@@ -52,7 +52,7 @@ class Client(Model):
     """ The SQL Clients table. """
     
     # The UUID of the client.
-    uuid = fields.CharField(pk=True)
+    uuid = fields.CharField(max_length=255, pk=True)
     display_name = fields.CharField(max_length=255)
     
     # The type of client. (HYBRID/CPU/GPU)
