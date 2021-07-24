@@ -14,26 +14,26 @@ class Job(Model):
     number = fields.IntField(pk=True)
 
     # The URL to download the shard from CommonCrawl.
-    url = fields.CharField()
+    url = fields.CharField(max_length=500)
 
     # The starting and ending sample IDs for this entire chunk (= 2 shards)
-    start_id = fields.CharField()
-    end_id = fields.CharField()
+    start_id = fields.CharField(max_length=255)
+    end_id = fields.CharField(max_length=255)
 
     # The shard of the chunk: 0 = first 50%, 1 = last 50%.
     shard_of_chunk = fields.IntField()
     
     # GPU job information (not always used)
     gpu = fields.BooleanField()
-    gpu_url = fields.CharField(null=True)
+    gpu_url = fields.CharField(max_length=500, null=True)
     
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
     closed = fields.BooleanField()
     
     # User data
-    completor = fields.CharField(null=True) # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
-    cpu_completor = fields.CharField(null=True) # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
+    completor = fields.CharField(max_length=255, null=True) # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
+    cpu_completor = fields.CharField(max_length=255, null=True) # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
 
     
     # The shard in string format (for debugging)
@@ -53,13 +53,13 @@ class Client(Model):
     
     # The UUID of the client.
     uuid = fields.CharField(pk=True)
-    display_name = fields.CharField()
+    display_name = fields.CharField(max_length=255)
     
     # The type of client. (HYBRID/CPU/GPU)
-    type = fields.CharField()
+    type = fields.CharField(max_length=6)
     
     # User information.
-    user_nickname = fields.CharField()
+    user_nickname = fields.CharField(max_length=255)
     
     # The shard this client is currently processing.
     shard = fields.ForeignKeyField("models.Job", related_name="worker", null=True)
@@ -83,7 +83,7 @@ class Leaderboard(Model):
     """ The Hybrid/GPU job completion leaderboard. """
     
     # The user's nickname
-    nickname = fields.CharField(pk=True)
+    nickname = fields.CharField(max_length=255, pk=True)
     
     # Data about the user.
     jobs_completed = fields.IntField(default=0)
@@ -94,7 +94,7 @@ class CPU_Leaderboard(Model):
     """ The CPU job completion leaderboard. """
     
     # The user's nickname
-    nickname = fields.CharField(pk=True)
+    nickname = fields.CharField(max_length=255, pk=True)
     
     # Data about the user.
     jobs_completed = fields.IntField(default=0)
