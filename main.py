@@ -3,31 +3,30 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 import asyncio
-from uvicorn import run
 from typing import Optional
+from tortoise import Tortoise
 from pydantic import BaseModel
+from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from name import new as newName
-from time import time, sleep
+from name import new as new_name
 from random import choice
 from uuid import uuid4
-import numpy as np
+from time import time
 import aiofiles
 import json
 
-from store import DataLoader
-
 from config import *
-
-
-s = DataLoader()
+from models import *
+from cache import Cache
 
     
 app = FastAPI()
+cache = Cache(REDIS_CONN_URL)
 templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
+eta = "Calculating..."
 
 
 # REQUEST INPUTS START ------
@@ -73,76 +72,145 @@ class MarkAsDoneInput(BaseModel):
 
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
-    return templates.TemplateResponse('index.html', {"request": request, "all": all, "clients": s.clients, "completion": s.completion, "progress_str": s.progress_str, "total_pairs": s.total_pairs, "eta": s.eta})
+    try:
+        body, expired = await cache.get_body_expired(f'/?all={all}')
+        if not expired:
+            return HTMLResponse(content=body)
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
+    
+    # Render body
+    
+    completed = await Job.filter(closed=True).count()
+    total = await Job.all().count()
+
+    if all:
+        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
+        cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen").limit(50)
+        gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen").limit(50)
+    else:
+        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen")
+        cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen")
+        gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen")
+        
+    body = templates.TemplateResponse('index.html', {
+        "request": request,
+        "all": all,
+        "hybrid_clients": hybrid_clients,
+        "cpu_clients": cpu_clients,
+        "gpu_clients": gpu_clients,
+        "completion_float": completed / total if total > 0 else 100.0,
+        "completion_str": f"{completed:,} / {total:,}",
+        "total_pairs": sum([i.pairs_scraped for i in await Leaderboard.all()]),
+        "eta": eta
+    })
+
+    # Set page cache with body.
+    await cache.set(f'/?all={all}', body.body)
+
+    return body
+    
 
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
-    return templates.TemplateResponse('install.html', {"request": request})
+    return templates.TemplateResponse('install.html', {
+        "request": request
+    })
 
 
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
-    return templates.TemplateResponse('leaderboard.html', {"request": request, "leaderboard": dict(sorted(s.leaderboard.items(), key=lambda x: x[1], reverse=True))})
+    try:
+        body, expired = await cache.get_body_expired('/leaderboard')
+        if not expired:
+            return HTMLResponse(content=body)
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
+    
+    body = templates.TemplateResponse('leaderboard.html', {
+        "request": request,
+        "leaderboard": await Leaderboard.all().order_by("jobs_completed"),
+        "cpu_leaderboard": await CPU_Leaderboard.all().order_by("jobs_completed")
+    })
+    
+    # Set page cache with body.
+    await cache.set('/leaderboard', body.body)
+    
+    return body
 
 
-@app.get('/worker/{type}/{worker}', response_class=HTMLResponse)
-async def worker_info(type: str, worker: str, request: Request):
+@app.get('/worker/{type}/{display_name}', response_class=HTMLResponse)
+async def worker_info(type: str, display_name: str, request: Request):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if worker in s.worker_cache[type]:
-        w = s.clients[type][s.worker_cache[type][worker]]
-    else:
-        w = None
-        for token in s.clients[type]:
-            if s.clients[type][token]["display_name"] == worker:
-                w = s.clients[type][token]
-                s.worker_cache[type][worker] = token
-                if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
-                    s.worker_cache[type].pop(0)
-                break
-    if not w:
+        
+    try:
+        data = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
+    except:
         raise HTTPException(status_code=500, detail="Worker not found.")
-    else:
-        return templates.TemplateResponse('worker.html', {"request": request, **w})
+    
+    return templates.TemplateResponse('worker.html', {"request": request, "c": data})
 
 
 @app.get('/data')
 async def data():
-    return {
-        "completion_str": s.progress_str,
-        "completion_float": s.completion,
-        "total_connected_workers": len(s.clients["CPU"]) + len(s.clients["GPU"]) + len(s.clients["HYBRID"]),
-        "total_pairs_scraped": s.total_pairs,
-        "open_jobs": len(s.open_jobs),
-        "pending_jobs": len(s.pending_jobs),
-        "closed_jobs": len(s.closed_jobs),
-        "leaderboard": s.leaderboard,
-        "eta": s.eta
+    try:
+        body, expired = await cache.get_body_expired('/data')
+        if not expired:
+            return json.loads(body)
+        else:
+            # Cache has expired, we need to re-render the page body.
+            pass
+    except:
+        # Cache hasn't yet been set, we need to render the page body.
+        pass
+    
+    completed = await Job.filter(closed=True).count()
+    total = await Job.all().count()
+    body = {
+        "completion_str": f"{completed:,} / {total:,}",
+        "completion_float": completed / total if total > 0 else 100.0,
+        "total_connected_workers": await Client.all().count(),
+        "total_pairs_scraped": sum([i.pairs_scraped for i in await Leaderboard.all()]),
+        "eta": eta
     }
+    
+    # Set page cache with body.
+    await cache.set('/data', json.dumps(body))
+    
+    return body
 
 
-@app.get('/worker/{type}/{worker}/data')
-async def worker_data(type: str, worker: str):
+@app.get('/worker/{type}/{display_name}/data')
+async def worker_data(type: str, display_name: str):
     type = type.upper()
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if worker in s.worker_cache[type]:
-        return s.clients[type][s.worker_cache[type][worker]]
     
-    w = None
-    for token in s.clients[type]:
-        if s.clients[type][token]["display_name"] == worker:
-            w = s.clients[type][token]
-            s.worker_cache[type][worker] = token
-            if len(s.worker_cache[type]) > MAX_WORKER_CACHE_SIZE:
-                s.worker_cache[type].pop(0)
-            break
-    if not w:
+    try:
+        c = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
+        return {
+            "display_name": c.display_name,
+            "shard_number": c.shard.number if c.shard else "N/A",
+            "progress": c.progress,
+            "jobs_completed": c.jobs_completed,
+            "first_seen": c.first_seen,
+            "last_seen": c.last_seen,
+            "user_nickname": c.user_nickname,
+            "type": c.type
+        }
+    except:
         raise HTTPException(status_code=500, detail="Worker not found.")
-    else:
-        return w
             
         
 # ADMIN START ------
@@ -215,18 +283,24 @@ async def lookup_wat(inp: LookupWatInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
-    shards = []
-    for shard in s.open_jobs:
-        if s.shard_info["directory"] + shard["url"] == inp.url:
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-            shards.append([int(count), shard])
+    body = []
     
-    if len(shards) == 0:
+    shards = await Job.filter(closed=False, pending=False, gpu=False, url=inp.url)
+    for shard in shards:
+        body.append([
+            shard.number,
+            {
+                "url": shard.url,
+                "start_id": shard.start_id,
+                "end_id": shard.end_id,
+                "shard": shard.shard_of_chunk
+            }
+        ])
+    
+    if len(body) == 0:
         return {"status": "failed", "detail": "All shards have already been completed by another worker."}
     else:
-        return {"status": "success", "shards": shards}
+        return {"status": "success", "shards": body}
     
     
 @app.post('/custom/markasdone')
@@ -234,35 +308,21 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
-    existed = 0
-    for shard in inp.shards:
-        if str(shard) in s.closed_jobs or str(shard) in s.pending_jobs:
-            continue
-        else:
-            for sd in s.open_jobs:
-                count = (np.int64(sd["end_id"]) / 1000000) * 2
-                if sd["shard"] == 0:
-                    count -= 1
-                if int(count) == shard:
-                    s.open_jobs.remove(sd)
-                    break
-            s.closed_jobs.append(str(shard))
-            existed += 1
+    existed = await Job.filter(number__in=inp.shards, closed=False, pending=False).count()
+    await Job.filter(number__in=inp.shards, closed=False, pending=False).update(closed=True, pending=False, completor=inp.nickname)
     
     if existed > 0:
-        try:
-            s.leaderboard[inp.nickname][0] += existed
-            s.leaderboard[inp.nickname][1] += inp.count
-        except KeyError:
-            s.leaderboard[inp.nickname] = [existed, inp.count]
-
-        s.total_pairs += inp.count
-
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
-
-        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
+        user, created = await Leaderboard.get_or_create(nickname=inp.nickname)
         
+        if created:
+            user.jobs_completed = existed
+            user.pairs_scraped = inp.count
+        else:
+            user.jobs_completed += existed
+            user.pairs_scraped += inp.count
+        
+        await user.save()
+ 
         return {"status": "success"}
     else:
         return {"status": "failed", "detail": "All shards have already been completed by another worker."}
@@ -275,25 +335,22 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if s.jobs_remaining == "0" and type != "GPU":
-        raise HTTPException(status_code=503, detail="No new jobs available.")
     
-    display_name = newName()
     uuid = str(uuid4())
-    ctime = time()
+    ctime = int(time())
+    display_name = new_name()
 
-    worker_data = {
-        "shard_number": "Waiting",
-        "progress": "Initialized",
-        "jobs_completed": 0,
-        "first_seen": ctime,
-        "last_seen": ctime,
-        "user_nickname": nickname,
-        "display_name": display_name,
-        "type": type
-    }
-
-    s.clients[type][uuid] = worker_data
+    await Client.create(
+        uuid=uuid,
+        display_name=display_name,
+        type=type,
+        user_nickname=nickname,
+        progress="Initialized",
+        jobs_completed=0,
+        first_seen=ctime,
+        last_seen=ctime,
+        shard=None
+    )
 
     return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
@@ -302,7 +359,10 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    return str(inp.token in s.clients[inp.type])
+        
+    exists = await Client.exists(uuid=inp.token, type=inp.type)
+    
+    return str(exists)
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
@@ -314,61 +374,49 @@ async def getUploadAddress():
 async def newJob(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
-    if s.jobs_remaining == "0":
-        raise HTTPException(status_code=503, detail="No new jobs available.")
     
-    if inp.type == "GPU":
-        for i in s.open_gpu:
-            if i[0] in s.pending_gpu:
-                continue
-            else:
-                s.pending_gpu.append(i[0])
-                
-                s.clients[inp.type][token]["shard_number"] = int(i[0])
-                s.clients[inp.type][token]["progress"] = "Recieved new job"
-                s.clients[inp.type][token]["last_seen"] = time()
-                
-                return i[1]
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    if client.shard is not None and client.shard.pending:
+        client.shard.pending = False
+        await client.shard.save()
+
+    if inp.type == "GPU":         
+        try:
+            job = await Job.filter(pending=False, closed=False, gpu=True).first()
+        except:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+        
+        if job is None:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
             
-        raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+        job.pending = True
+        await job.save()
+        
+        client.shard = job
+        client.progress = "Recieved new job"
+        client.last_seen = int(time())
+        await client.save()
+        
+        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
     else:
-        if s.clients[inp.type][token]["shard_number"] != "Waiting":
-            try:
-                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-            except ValueError:
-                pass
-
-        c = 0
-        shard = s.open_jobs[c]
-
-        count = (np.int64(shard["end_id"]) / 1000000) * 2
-        if shard["shard"] == 0:
-            count -= 1
-
-        count = int(count)
-
-        while str(count) in s.pending_jobs or str(count) in s.closed_jobs or str(count) in [i[0] for i in s.open_gpu]:
-            c += 1
-            shard = s.open_jobs[c]
-
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-
-            count = int(count)
-
-        s.pending_jobs.append(str(count))
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
-
-        s.clients[inp.type][token]["shard_number"] = count
-        s.clients[inp.type][token]["progress"] = "Recieved new job"
-        s.clients[inp.type][token]["last_seen"] = time()
-
-        return {"url": s.shard_info["directory"] + shard["url"], "start_id": shard["start_id"], "end_id": shard["end_id"], "shard": shard["shard"]}
+        try:
+            job = await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first()
+        except:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+        
+        job.pending = True
+        await job.save()
+        
+        client.shard = job
+        client.progress = "Recieved new job"
+        client.last_seen = int(time())
+        await client.save()      
+        
+        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
@@ -377,21 +425,22 @@ async def jobCount(type: Optional[str] = "HYBRID"):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
-        return str(len(s.open_gpu) - len(s.pending_gpu))
+        count = await Job.filter(pending=False, closed=False, gpu=True).count()
     else:
-        return s.jobs_remaining
+        count = await Job.filter(pending=False, closed=False, gpu=False).count()
+    
+    return str(count)
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
 async def updateProgress(inp: TokenProgressInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
-    s.clients[inp.type][token]["progress"] = inp.progress
-    s.clients[inp.type][token]["last_seen"] = time()
+    
+    try:
+        await Client.get(uuid=inp.token, type=inp.type).update(progress=inp.progress, last_seen=int(time()))
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
     return "success"
 
@@ -400,84 +449,68 @@ async def updateProgress(inp: TokenProgressInput):
 async def markAsDone(inp: TokenCountInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
+    
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    if client.shard is None:
+        raise HTTPException(status_code=500, detail="You do not have an open job.")
+    if client.shard.closed:
+        raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
+    
     if inp.type == "CPU":
-        if inp.url is None or inp.start_id is None or inp.end_id is None or inp.shard is None:
-            raise HTTPException(status_code=500, detail="The worker did not submit valid input data.")
-        if s.clients[inp.type][token]["shard_number"] == "Waiting":
-            raise HTTPException(status_code=500, detail="You do not have an open job.")
+        if inp.url is None:
+            raise HTTPException(status_code=500, detail="The worker did not submit valid download data.")
         
-        try:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-        except ValueError:
-            raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
+        client.shard.gpu = True
+        client.shard.pending = False
+        client.shard.gpu_url = inp.url
+        client.shard.cpu_completor = client.user_nickname
+        await client.shard.save()
+        
+        client.shard = None
+        client.progress = "Completed Job"
+        client.jobs_completed += 1
+        client.last_seen = int(time())
+        await client.save()
+
+        user, created = await CPU_Leaderboard.get_or_create(nickname=client.user_nickname)
+        if created:
+            user.jobs_completed = 1
+        else:
+            user.jobs_completed += 1
             
-        s.open_gpu.append([
-            str(s.clients[inp.type][token]["shard_number"]),
-            {
-                "url": inp.url,
-                "start_id": inp.start_id,
-                "end_id": inp.end_id,
-                "shard": inp.shard
-            }
-        ])
+        await user.save()
         
-        s.clients[inp.type][token]["shard_number"] = "Waiting"
-        s.clients[inp.type][token]["progress"] = "Completed Job"
-        s.clients[inp.type][token]["jobs_completed"] += 1
-        s.clients[inp.type][token]["last_seen"] = time()
+        # completion + completion_str are not affected by CPU jobs.
         
         return "success"
     else:
         if not inp.count:
             raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
         
-        if inp.type == "GPU":
-            for i in s.open_gpu:
-                if i[0] == str(s.clients[inp.type][token]["shard_number"]):
-                    s.open_gpu.remove(i)
-                    break
-            
-            try:
-                s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-            except ValueError:
-                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-        else:
-            try:
-                s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-            except ValueError:
-                raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
-             
-        s.closed_jobs.append(str(s.clients[inp.type][token]["shard_number"]))
+        client.shard.closed = True
+        client.shard.pending = False
+        client.shard.completor = client.user_nickname
+        await client.shard.save()
         
-        for shard in s.open_jobs:
-            count = (np.int64(shard["end_id"]) / 1000000) * 2
-            if shard["shard"] == 0:
-                count -= 1
-            if int(count) == s.clients[inp.type][token]["shard_number"]:
-                s.open_jobs.remove(shard)
-                break
-                
-        s.jobs_remaining = str(len(s.open_jobs) - (len(s.pending_jobs) + len(s.open_gpu)))
+        client.shard = None
+        client.progress = "Completed Job"
+        client.jobs_completed += 1
+        client.last_seen = int(time())
+        await client.save()
 
-        s.completion = (len(s.closed_jobs) / s.total_jobs) * 100
-        s.progress_str = f"{len(s.closed_jobs):,} / {s.total_jobs:,}"
-
-        s.clients[inp.type][token]["shard_number"] = "Waiting"
-        s.clients[inp.type][token]["progress"] = "Completed Job"
-        s.clients[inp.type][token]["jobs_completed"] += 1
-        s.clients[inp.type][token]["last_seen"] = time()
-
-        try:
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][0] += 1
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]][1] += inp.count
-        except KeyError:
-            s.leaderboard[s.clients[inp.type][token]["user_nickname"]] = [1, inp.count]
-            
-        s.total_pairs += inp.count
+        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
+        if created:
+            user.jobs_completed = 1
+            user.pairs_scraped = inp.count
+        else:
+            user.jobs_completed += 1
+            user.pairs_scraped += inp.count
+        
+        await user.save()
 
         return "success"
 
@@ -486,19 +519,24 @@ async def markAsDone(inp: TokenCountInput):
 async def gpuInvalidDownload(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-    
-    for i in s.open_gpu:
-        if i[0] == str(s.clients[inp.type][token]["shard_number"]):
-            s.open_gpu.remove(i)
-            break
     
     try:
-        s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-    except ValueError:
-        pass
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+    
+    if client.shard is None:
+        raise HTTPException(status_code=500, detail="You are not currently working on a job!")
+    
+    client.shard.gpu_url = None
+    client.shard.gpu = False
+    client.shard.pending = False
+    client.shard.cpu_completor = None
+    await client.shard.save()
+    
+    client.shard = None
+    client.last_seen = int(time())
+    await client.save()
     
     return "success"
 
@@ -507,22 +545,17 @@ async def gpuInvalidDownload(inp: TokenInput):
 async def bye(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    token = inp.token
-    if token not in s.clients[inp.type]:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?\n\nYou could also have an out of date client. Check the footer of the home page for the latest version numbers.")
-
-    try:
-        if inp.type == "GPU":
-            s.pending_gpu.remove(str(s.clients[inp.type][token]["shard_number"]))
-        else:
-            s.pending_jobs.remove(str(s.clients[inp.type][token]["shard_number"]))
-    except ValueError:
-        pass
-
-    del s.clients[inp.type][token]
     
-    if token in s.worker_cache[inp.type]:
-        del s.worker_cache[inp.type][token]
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        
+    if client.shard != None:
+        client.shard.pending = False
+        await client.shard.save()
+    
+    await client.delete()
     
     return "success"
 
@@ -530,25 +563,18 @@ async def bye(inp: TokenInput):
 # TIMERS START ------
 
 
-async def check_idle(timeout):
+async def check_idle():
     while True:
-        for type in types:
-            for client in list(s.clients[type].keys()):
-                if (time() - s.clients[type][client]["last_seen"]) > timeout:
-                    try:
-                        if type == "GPU":
-                            s.pending_gpu.remove(str(s.clients[type][client]["shard_number"]))
-                        else:
-                            s.pending_jobs.remove(str(s.clients[type][client]["shard_number"]))
-                    except:
-                        pass
-                    
-                    if client in s.worker_cache[type]:
-                        del s.worker_cache[type][client]
-
-                    del s.clients[type][client]
-
-        await asyncio.sleep(30)
+        await asyncio.sleep(300)
+        t = int(time()) - IDLE_TIMEOUT
+        
+        clients = await Client.filter(last_seen__lte=t, shard_id__not_isnull=True).prefetch_related("shard")
+        for client in clients:
+            if client.shard.pending:
+                client.shard.pending = False
+                await client.shard.save()
+        
+        await Client.filter(last_seen__lte=t).delete()
 
         
 async def calculate_eta():
@@ -569,11 +595,17 @@ async def calculate_eta():
         else:
             return f"{s} second{'s' if s!=1 else ''}"
 
+    global eta
+        
     dataset = []
     while True:
-        start = len(s.closed_jobs)
+        try:
+            start = await Job.filter(closed=True).count()
+        except:
+            await asyncio.sleep(5)
+            continue
         await asyncio.sleep(AVERAGE_INTERVAL)
-        end = len(s.closed_jobs)
+        end = await Job.filter(closed=True).count()
 
         dataset.append(end - start)
         if len(dataset) > AVERAGE_DATASET_LENGTH:
@@ -581,7 +613,7 @@ async def calculate_eta():
 
         mean = sum(dataset) / len(dataset)
         mean_per_second = mean / AVERAGE_INTERVAL
-        remaining = len(s.open_jobs) - len(s.pending_jobs)
+        remaining = await Job.filter(closed=False, pending=False, gpu=False).count()
 
         try:
             length = remaining // mean_per_second
@@ -589,39 +621,9 @@ async def calculate_eta():
             continue
         
         if length:
-            s.eta = _format_time(length)
+            eta = _format_time(length)
         else:
-            s.eta = "Finished"
-
-        
-async def save_jobs_leaderboard():
-    a = len(s.open_jobs)
-    b = len(s.closed_jobs)
-    c = sum([s.leaderboard[i][1] for i in s.leaderboard])
-    d = len(s.open_gpu)
-    while True:
-        await asyncio.sleep(300)
-        
-        w = len(s.open_jobs)
-        if a != w:
-            async with aiofiles.open("jobs/open.json", "w") as f:
-                await f.write(json.dumps(s.open_jobs))
-        x = len(s.closed_jobs)
-        if b != x:
-            async with aiofiles.open("jobs/closed.json", "w") as f:
-                await f.write(json.dumps(s.closed_jobs))
-        y = sum([s.leaderboard[i][1] for i in s.leaderboard])
-        if c != y:
-            async with aiofiles.open("jobs/leaderboard.json", "w") as f:
-                await f.write(json.dumps(s.leaderboard))
-        z = len(s.open_gpu)
-        if d != z:
-            async with aiofiles.open("jobs/open_gpu.json", "w") as f:
-                await f.write(json.dumps(s.open_gpu))
-
-        a = w
-        b = x
-        c = y
+            eta = "Finished"
         
 
 # FASTAPI UTILITIES START ------ 
@@ -629,28 +631,15 @@ async def save_jobs_leaderboard():
     
 @app.on_event('startup')
 async def app_startup():
-    if __name__ == "__main__":
-        asyncio.create_task(check_idle(IDLE_TIMEOUT))
-        asyncio.create_task(calculate_eta())
-        asyncio.create_task(save_jobs_leaderboard())
+    asyncio.create_task(check_idle())
+    asyncio.create_task(calculate_eta())
 
-  
+        
 @app.on_event('shutdown')
-async def shutdown_event():
-    if __name__ == "__main__":
-        async with aiofiles.open("jobs/open.json", "w") as f:
-            await f.write(json.dumps(s.open_jobs))
+async def app_shutdown():
+    await Tortoise.close_connections()
         
-        async with aiofiles.open("jobs/closed.json", "w") as f:
-            await f.write(json.dumps(s.closed_jobs))
-        
-        async with aiofiles.open("jobs/leaderboard.json", "w") as f:
-            await f.write(json.dumps(s.leaderboard))
-        
-        async with aiofiles.open("jobs/open_gpu.json", "w") as f:
-            await f.write(json.dumps(s.open_gpu))
 
-        
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
     return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
@@ -659,5 +648,14 @@ async def http_exception_handler(request, exc):
 # ------------------------------ 
 
 
+register_tortoise(
+    app,
+    db_url=SQL_CONN_URL,
+    modules={"models": ["models"]},
+    generate_schemas=True,
+    add_exception_handlers=True,
+)
+
+
 if __name__ == "__main__":
-    run(app, host=HOST, port=PORT) #, workers=WORKERS_COUNT [multiprocessing was reverted for v2.1.0, will be added at a later date TBD]
+    print("From v3.0.0, you can no longer run this script directly from Python. Call gunicorn/uvicorn directly from the terminal, using \"main:app\" as the server.")
