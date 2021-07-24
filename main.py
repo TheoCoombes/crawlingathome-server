@@ -348,7 +348,7 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         first_seen=ctime,
         last_seen=ctime,
         shard=None
-    }  
+    )
 
     return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
 
