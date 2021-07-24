@@ -39,7 +39,7 @@
                     {% for worker in hybrid_clients %}
                         <tr>
                             <th scope="row"><a href="/worker/hybrid/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if worker.shard is none %}
+                            {% if worker.shard == None %}
                                 <td><i>Waiting</i></td>
                             {% else %}
                                 <td>{{ "{:,}".format(worker.shard.number) }}</td>
@@ -81,7 +81,7 @@
                     {% for worker in cpu_clients %}
                         <tr>
                             <th scope="row"><a href="/worker/cpu/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if worker.shard is none %}
+                            {% if worker.shard == None %}
                                 <td><i>Waiting</i></td>
                             {% else %}
                                 <td>{{ "{:,}".format(worker.shard.number) }}</td>
@@ -123,7 +123,7 @@
                     {% for worker in gpu_clients %}
                         <tr>
                             <th scope="row"><a href="/worker/gpu/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if worker.shard is none %}
+                            {% if worker.shard == None %}
                                 <td><i>Waiting</i></td>
                             {% else %}
                                <td>{{ "{:,}".format(worker.shard.number) }}</td>
