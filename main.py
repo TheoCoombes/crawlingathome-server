@@ -482,7 +482,7 @@ async def markAsDone(inp: TokenCountInput):
         client.shard.closed = True
         client.shard.pending = False
         client.shard.completor = client.user_nickname
-        await client.save()
+        await client.shard.save()
         
         client.shard = None
         client.progress = "Completed Job"
