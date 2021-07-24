@@ -102,6 +102,7 @@ async def index(request: Request, all: Optional[bool] = False):
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
+        "bool": bool,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
