@@ -573,6 +573,8 @@ async def app_startup():
         add_exception_handlers=True,
     )
     
+    await asyncio.sleep(1)
+    
     asyncio.create_task(check_idle())
     asyncio.create_task(calculate_eta())
 
