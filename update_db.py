@@ -95,7 +95,7 @@ async def init():
         
         jobs.append(job)
     
-    jobs = sorted(jobs, key=lambda x: x.number)
+    jobs = sorted(jobs, key=lambda x: x.number, reverse=True)
     
     print("Bulk creating jobs in database... (this may take a while)")
     await Job.bulk_create(jobs)
