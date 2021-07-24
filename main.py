@@ -565,7 +565,14 @@ async def calculate_eta():
     
 @app.on_event('startup')
 async def app_startup():
-    # TODO if worker == 0
+    register_tortoise(
+        app,
+        db_url=SQL_CONN_URL,
+        modules={"models": ["models"]},
+        generate_schemas=True,
+        add_exception_handlers=True,
+    )
+    
     asyncio.create_task(check_idle())
     asyncio.create_task(calculate_eta())
 
@@ -581,15 +588,6 @@ async def http_exception_handler(request, exc):
 
 
 # ------------------------------ 
-
-
-register_tortoise(
-    app,
-    db_url=SQL_CONN_URL,
-    modules={"models": ["models"]},
-    generate_schemas=True,
-    add_exception_handlers=True,
-)
 
 
 if __name__ == "__main__":
