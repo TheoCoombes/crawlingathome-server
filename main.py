@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 import asyncio
 from typing import Optional
+from tortoise import Tortoise
 from pydantic import BaseModel
 from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -565,10 +566,15 @@ async def calculate_eta():
     
 @app.on_event('startup')
 async def app_startup():
-    if __name__ == "__main__": # TODO if worker == 0
-        asyncio.create_task(check_idle())
-        asyncio.create_task(calculate_eta())
+    # TODO if worker == 0
+    asyncio.create_task(check_idle())
+    asyncio.create_task(calculate_eta())
 
+        
+@app.on_event('shutdown')
+async def app_shutdown():
+    await Tortoise.close_connections()
+        
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
@@ -581,7 +587,7 @@ async def http_exception_handler(request, exc):
 register_tortoise(
     app,
     db_url=SQL_CONN_URL,
-    modules={"models": ["app.models"]},
+    modules={"models": ["models"]},
     generate_schemas=True,
     add_exception_handlers=True,
 )
