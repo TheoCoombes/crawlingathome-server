@@ -90,7 +90,6 @@ async def index(request: Request, all: Optional[bool] = False):
 
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
-        print(len(hybrid_clients), hybrid_clients)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
@@ -98,6 +97,31 @@ async def index(request: Request, all: Optional[bool] = False):
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
 
+    hybrid_clients = [{
+        "display_name": i.display_name,
+        "shard": i.shard.number if i.shard else "Waiting",
+        "progress": i.progress,
+        "jobs_completed": i.jobs_completed,
+        "user_nickname": i.user_nickname,
+        "last_seen": i.last_seen
+    } for i in hybrid_clients]
+    cpu_clients = [{
+        "display_name": i.display_name,
+        "shard": i.shard.number if i.shard else "Waiting",
+        "progress": i.progress,
+        "jobs_completed": i.jobs_completed,
+        "user_nickname": i.user_nickname,
+        "last_seen": i.last_seen
+    } for i in cpu_clients]
+    gpu_clients = [{
+        "display_name": i.display_name,
+        "shard": i.shard.number if i.shard else "Waiting",
+        "progress": i.progress,
+        "jobs_completed": i.jobs_completed,
+        "user_nickname": i.user_nickname,
+        "last_seen": i.last_seen
+    } for i in gpu_clients]
+        
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
