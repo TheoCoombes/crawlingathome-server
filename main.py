@@ -467,7 +467,7 @@ async def markAsDone(inp: TokenCountInput):
         user, created = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)
         if created:
             user.job_count = 1
-        else;
+        else:
             user.job_count += 1
             
         await user.save()
