@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 class Cache:
     def __init__(self, connection_url):
-        self._redis = aioredis.from_url(connection_url)
+        self._redis = aioredis.utils.from_url(connection_url)
     
     async def exists(self, page) -> bool:
         """ Returns True if page `page` exists in the cache. """
