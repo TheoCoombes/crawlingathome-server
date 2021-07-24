@@ -73,10 +73,8 @@ class MarkAsDoneInput(BaseModel):
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
     try:
-        print("fetching...")
         body, expired = await cache.get_body_expired(f'/?all={all}')
         if not expired:
-            print("responding...")
             return HTMLResponse(content=body)
         else:
             # Cache has expired, we need to re-render the page body.
@@ -96,8 +94,6 @@ async def index(request: Request, all: Optional[bool] = False):
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen")
-        for client in hybrid_clients:
-            print(client)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
 
