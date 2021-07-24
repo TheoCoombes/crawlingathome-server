@@ -314,7 +314,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if existed > 0:
         user, created = await Leaderboard.get_or_create(nickname=inp.nickname)
         
-        user.job_count = user.job_count + existed
+        user.jobs_completed = user.jobs_completed + existed
         user.pairs_scraped = user.pairs_scraped + inp.count
         
         await user.save()
@@ -466,9 +466,9 @@ async def markAsDone(inp: TokenCountInput):
 
         user, created = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)
         if created:
-            user.job_count = 1
+            user.jobs_completed = 1
         else:
-            user.job_count += 1
+            user.jobs_completed += 1
             
         await user.save()
         
@@ -492,10 +492,10 @@ async def markAsDone(inp: TokenCountInput):
 
         user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
         if created:
-            user.job_count = 1
+            user.jobs_completed = 1
             user.pairs_scraped = inp.count
         else:
-            user.job_count += 1
+            user.jobs_completed += 1
             user.pairs_scraped += inp.count
         
         await user.save()
