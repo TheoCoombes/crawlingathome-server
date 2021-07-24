@@ -1,6 +1,7 @@
 import aioredis
 from time import time
 from typing import Optional, Tuple
+from config import PAGE_CACHE_EXPIRY
 
 class Cache:
     def __init__(self, connection_url):
@@ -14,11 +15,11 @@ class Cache:
         """ Returns True if page `page` has expired in the cache. """
         return await self._redis.hget(page, "expires") > int(time())
     
-    async def set(self, page, body, expires_in: int = 60) -> None:
-        """ Sets the page body `body` at page `page`. Expires after `expires_in` seconds. """
+    async def set(self, page, body) -> None:
+        """ Sets the page body `body` at page `page`. Expires after `config.PAGE_CACHE_EXPIRY` seconds. """
         await self._redis.hmset(page, {
             "body": body,
-            "expires": int(time()) + expires_in
+            "expires": int(time()) + PAGE_CACHE_EXPIRY
         })
     
     async def get_body_expired(self, page) -> Tuple[Optional[str], bool]:
