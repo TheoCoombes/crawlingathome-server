@@ -5,4 +5,4 @@ asyncio
 numpy
 aiofiles
 tortoise-orm
-aioredis
+aioredis==2.0.0b1
