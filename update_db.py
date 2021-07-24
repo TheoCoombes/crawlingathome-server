@@ -32,7 +32,7 @@ async def init():
         directory = json.load(f)["directory"]
     with open("jobs/original.json", "r") as f:
         db = json.load(f)
-    with open("job/open.json", "r") as f:
+    with open("jobs/open.json", "r") as f:
         opened = [_calculate_shard_number(i) for i in json.load(f)] 
     with open("jobs/closed.json", "r") as f:
         closed = [int(i) for i in json.load(f)]
