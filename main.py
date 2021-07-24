@@ -394,7 +394,7 @@ async def newJob(inp: TokenInput):
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
     else:
         try:
-            job = await Job.filter(pending=False, closed=False, gpu=False).first()
+            job = await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first()
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
@@ -415,9 +415,11 @@ async def jobCount(type: Optional[str] = "HYBRID"):
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
-        str(await Job.filter(pending=False, closed=False, gpu=True).count())
+        count = await Job.filter(pending=False, closed=False, gpu=True).count()
     else:
-        str(await Job.filter(pending=False, closed=False, gpu=False).count())
+        count = await Job.filter(pending=False, closed=False, gpu=False).count()
+    
+    return str(count)
 
 
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
