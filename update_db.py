@@ -36,7 +36,7 @@ async def init():
         opened = [_calculate_shard_number(i) for i in json.load(f)] 
     with open("jobs/closed.json", "r") as f:
         closed = [int(i) for i in json.load(f)]
-    with open("jobs/open_gpu", "r") as f:
+    with open("jobs/open_gpu.json", "r") as f:
         gpu_data = json.load(f)
     
     jobs = []
