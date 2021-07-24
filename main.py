@@ -89,7 +89,7 @@ async def index(request: Request, all: Optional[bool] = False):
     total = await Job.all().count()
 
     if all:
-        hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
+        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
         cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen").limit(50)
     else:
