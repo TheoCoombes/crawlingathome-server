@@ -209,7 +209,7 @@ async def worker_data(type: str, display_name: str):
             "user_nickname": c.user_nickname,
             "type": c.type
         }
-    else:
+    except:
         raise HTTPException(status_code=500, detail="Worker not found.")
             
         
