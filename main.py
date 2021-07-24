@@ -286,7 +286,7 @@ async def lookup_wat(inp: LookupWatInput):
     body = []
     
     shards = await Job.filter(closed=False, pending=False, gpu=False, url=inp.url)
-    async for shard in shards:
+    for shard in shards:
         body.append([
             shard.number,
             {
@@ -314,8 +314,12 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if existed > 0:
         user, created = await Leaderboard.get_or_create(nickname=inp.nickname)
         
-        user.jobs_completed = user.jobs_completed + existed
-        user.pairs_scraped = user.pairs_scraped + inp.count
+        if created:
+            user.jobs_completed = existed
+            user.pairs_scraped = inp.count
+        else:
+            user.jobs_completed += existed
+            user.pairs_scraped += inp.count
         
         await user.save()
  
