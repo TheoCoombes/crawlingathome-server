@@ -104,7 +104,7 @@ async def index(request: Request, all: Optional[bool] = False):
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
-        "completion_float": completed / total,
+        "completion_float": completed / total if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": sum([user.pairs_scraped for i in await Leaderboard.all()]),
         "eta": eta
@@ -180,7 +180,7 @@ async def data():
     total = await Job.all().count()
     body = {
         "completion_str": f"{completed:,} / {total:,}",
-        "completion_float": completed / total,
+        "completion_float": completed / total if total > 0 else 100.0,
         "total_connected_workers": await Client.all().count(),
         "total_pairs_scraped": sum([user.pairs_scraped for i in await Leaderboard.all()]),
         "eta": eta
