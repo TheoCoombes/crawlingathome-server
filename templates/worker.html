@@ -20,7 +20,7 @@
         <br><br>
         <strong>Owner's Nickname:</strong> {{ c.user_nickname }}
 	    <br><br>
-        {% if c.shard is None %}
+        {% if c.shard is none %}
             <strong>Currently Working on Shard:</strong> (not currently working on a shard)
         {% else %}
             <strong>Currently Working on Shard:</strong> {{ '{:,}'.format(c.shard.number) }}
