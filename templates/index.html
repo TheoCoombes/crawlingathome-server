@@ -21,9 +21,9 @@
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Connected Hybrid Workers - {{ "{:,}".format(gpu_clients | length) }}</h2>
+        <h2>Connected Hybrid Workers - {{ "{:,}".format(hybrid_clients | length) }}</h2>
         <br>
-        {% if (gpu_clients | length) != 0 %}
+        {% if (hybrid_clients | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -36,7 +36,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for worker in gpu_clients %}
+                    {% for worker in hybrid_clients %}
                         <tr>
                             <th scope="row"><a href="/worker/hybrid/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
                             {% if worker.shard is none %}
@@ -53,7 +53,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (gpu_clients | length) > 50 and not all %}
+            {% if (hybrid_clients | length) > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion_float == 100.0 %}
