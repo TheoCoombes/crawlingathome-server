@@ -565,7 +565,7 @@ async def bye(inp: TokenInput):
 
 async def check_idle():
     while True:
-        await asyncio.sleep(300)
+        await asyncio.sleep(30) # TODO increase to 300
         t = int(time()) - IDLE_TIMEOUT
         
         await Client.filter(last_seen__lte=t, shard__isnull=False).update(shard__pending=False)
@@ -594,7 +594,11 @@ async def calculate_eta():
         
     dataset = []
     while True:
-        start = await Job.filter(closed=True).count()
+        try:
+            start = await Job.filter(closed=True).count()
+        except:
+            await asyncio.sleep(5)
+            continue
         await asyncio.sleep(AVERAGE_INTERVAL)
         end = await Job.filter(closed=True).count()
 
