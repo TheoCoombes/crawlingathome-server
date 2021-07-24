@@ -111,7 +111,7 @@ async def index(request: Request, all: Optional[bool] = False):
     })
 
     # Set page cache with body.
-    await cache.set('/', body.content)
+    await cache.set('/', str(body))
 
     return body
     
