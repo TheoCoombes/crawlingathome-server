@@ -511,7 +511,7 @@ async def check_idle():
         await asyncio.sleep(300)
         t = int(time()) - IDLE_TIMEOUT
         
-        await Client.filter(last_seen__lte=t, shard__not_isnull=True).select_related("shard").update(pending=False)
+        await Client.filter(last_seen__lte=t, not_isnull=shard).select_related("shard").update(pending=False)
         await Client.filter(last_seen__lte=t).delete()
 
         
