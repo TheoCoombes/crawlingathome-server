@@ -565,12 +565,13 @@ async def bye(inp: TokenInput):
 
 async def check_idle():
     while True:
-        await asyncio.sleep(30) # TODO increase to 300
+        await asyncio.sleep(5) # TODO increase to 300
         t = int(time()) - IDLE_TIMEOUT
         
-        await Client.filter(last_seen__lte=t, shard=None).delete()
+        await Client.filter(last_seen__lte=t, shard__null=True).delete()
         await Client.filter(last_seen__lte=t).prefetch_related("shard").select_related("shard").update(pending=False)
         await Client.filter(last_seen__lte=t).delete()
+        
 
         
 async def calculate_eta():
