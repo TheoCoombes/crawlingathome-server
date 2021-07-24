@@ -60,6 +60,8 @@ async def init():
         jobs.append(job)
     
     for i in closed:
+        if i in opened:
+            continue
         data = db[i-1]
         job = Job(
             number=i,
@@ -79,6 +81,8 @@ async def init():
     
     for data in gpu_data:
         number = int(data[0])
+        if number in opened:
+            continue
         job = Job(
             number=number,
             url=directory + db[number-1]["url"],
@@ -95,7 +99,7 @@ async def init():
         
         jobs.append(job)
     
-    jobs = sorted(jobs, key=lambda x: x.number, reverse=True)
+    jobs = sorted(jobs, key=lambda x: x.number) # Sort
     
     print("Bulk creating jobs in database... (this may take a while)")
     await Job.bulk_create(jobs)
