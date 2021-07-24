@@ -391,7 +391,7 @@ async def newJob(inp: TokenInput):
         client.last_seen = int(time())
         await client.save()
         
-        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
+        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
     else:
         try:
             job = await Job.filter(pending=False, closed=False, gpu=False).first()
@@ -406,7 +406,7 @@ async def newJob(inp: TokenInput):
         client.last_seen = int(time())
         await client.save()      
         
-        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
+        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
