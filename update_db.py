@@ -19,8 +19,8 @@ async def init():
     # 0. Connect to DB
     print("Connecting to DB using url from config.py...")
     await Tortoise.init(
-        db_url=SQL_DB_URL,
-        modules={'models': ['app.models']}
+        db_url=SQL_CONN_URL,
+        modules={'models': ['models']}
     )
 
     await Tortoise.generate_schemas()
