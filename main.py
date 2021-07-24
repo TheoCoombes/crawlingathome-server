@@ -112,7 +112,7 @@ async def index(request: Request, all: Optional[bool] = False):
     })
 
     # Set page cache with body.
-    await cache.set(f'/?all={all}', str(body))
+    await cache.set(f'/?all={all}', body.body)
 
     return body
     
@@ -145,7 +145,7 @@ async def leaderboard_page(request: Request):
     })
     
     # Set page cache with body.
-    await cache.set('/leaderboard', str(body))
+    await cache.set('/leaderboard', body.body)
     
     return body
 
