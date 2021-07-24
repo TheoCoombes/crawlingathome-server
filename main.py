@@ -22,7 +22,7 @@ from cache import Cache
 
     
 app = FastAPI()
-cache = Cache()
+cache = Cache(REDIS_CONN_URL)
 templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
@@ -580,7 +580,7 @@ async def http_exception_handler(request, exc):
 
 register_tortoise(
     app,
-    db_url=SQL_DB_URL,
+    db_url=SQL_CONN_URL,
     modules={"models": ["app_db"]},
     generate_schemas=True,
     add_exception_handlers=True,
