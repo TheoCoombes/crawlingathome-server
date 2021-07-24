@@ -308,18 +308,16 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if inp.password != ADMIN_PASSWORD:
         return {"status": "failed", "detail": "Invalid password."}
     
-    shards = await Job.filter(number__in=inp.shards, closed=False, pending=False)
-    existed = await shards.count()
-    
-    await shards.update(closed=True, pending=False, completor=inp.nickname)
+    existed = await Job.filter(number__in=inp.shards, closed=False, pending=False).count()
+    await Job.filter(number__in=inp.shards, closed=False, pending=False).update(closed=True, pending=False, completor=inp.nickname)
     
     if existed > 0:
         user, created = await Leaderboard.get_or_create(nickname=inp.nickname)
         
-        job_count = user.job_count + existed
-        pairs_scraped = user.pairs_scraped + inp.count
+        user.job_count = user.job_count + existed
+        user.pairs_scraped = user.pairs_scraped + inp.count
         
-        await user.update(job_count=job_count, pairs_scraped=pairs_scraped)
+        await user.save()
  
         return {"status": "success"}
     else:
@@ -376,7 +374,8 @@ async def newJob(inp: TokenInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
     if client.shard is not None and client.shard.pending:
-        await client.shard.update(pending=False)
+        await client.shard.pending = False
+        await client.shard.save()
 
     if inp.type == "GPU":         
         try:
@@ -384,8 +383,13 @@ async def newJob(inp: TokenInput):
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
-        await job.update(pending=True)
-        await client.update(shard=job, progress="Recieved new job", last_seen=int(time()))
+        job.pending = True
+        await job.save()
+        
+        client.shard = job
+        client.progress = "Recieved new job"
+        client.last_seen = int(time())
+        await client.save()
         
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
     else:
@@ -394,8 +398,13 @@ async def newJob(inp: TokenInput):
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
-        await job.update(pending=True)
-        await client.update(shard=job, progress="Recieved new job", last_seen=int(time()))         
+        job.pending = True
+        await job.save()
+        
+        client.shard = job
+        client.progress = "Recieved new job"
+        client.last_seen = int(time())
+        await client.save()      
         
         return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard}
 
@@ -443,11 +452,25 @@ async def markAsDone(inp: TokenCountInput):
         if inp.url is None:
             raise HTTPException(status_code=500, detail="The worker did not submit valid download data.")
         
-        await client.shard.update(gpu=True, pending=False, gpu_url=inp.url, cpu_completor=client.user_nickname)
-        await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
+        client.shard.gpu = True
+        client.shard.pending = False
+        client.shard.gpu_url = inp.url
+        client.shard.cpu_completor = client.user_nickname
+        await client.shard.save()
+        
+        client.shard = None
+        client.progress = "Completed Job"
+        client.jobs_completed += 1
+        client.last_seen = int(time())
+        await client.save()
 
-        user, created = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)    
-        await user.update(job_count=(user.job_count + 1))
+        user, created = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)
+        if created:
+            user.job_count = 1
+        else;
+            user.job_count += 1
+            
+        await user.save()
         
         # completion + completion_str are not affected by CPU jobs.
         
@@ -456,11 +479,26 @@ async def markAsDone(inp: TokenCountInput):
         if not inp.count:
             raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
         
-        await client.shard.update(closed=True, pending=False, completor=client.user_nickname)
-        await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
+        client.shard.closed = True
+        client.shard.pending = False
+        client.shard.completor = client.user_nickname
+        await client.save()
+        
+        client.shard = None
+        client.progress = "Completed Job"
+        client.jobs_completed += 1
+        client.last_seen = int(time())
+        await client.save()
 
-        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)    
-        await user.update(job_count=(user.job_count + 1), pairs_scraped=(user.pairs_scraped + inp.count))
+        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
+        if created:
+            user.job_count = 1
+            user.pairs_scraped = inp.count
+        else:
+            user.job_count += 1
+            user.pairs_scraped += inp.count
+        
+        await user.save()
 
         return "success"
 
@@ -475,12 +513,18 @@ async def gpuInvalidDownload(inp: TokenInput):
     except:
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
-    try:
-        await client.shard.update(gpu_url=None, gpu=False, pending=False, completor=None)
-    except:
+    if client.shard is None:
         raise HTTPException(status_code=500, detail="You are not currently working on a job!")
     
-    await client.update(shard=None, last_seen=int(time()))
+    client.shard.gpu_url = None
+    client.shard.gpu = False
+    client.shard.pending = False
+    client.shard.cpu_completor = None
+    await client.shard.save()
+    
+    client.shard = None
+    client.last_seen = int(time())
+    await client.save()
     
     return "success"
 
@@ -496,7 +540,8 @@ async def bye(inp: TokenInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
         
     if client.shard != None:
-        await client.shard.update(pending=False)
+        client.shard.pending = False
+        await client.shard.save()
     
     await client.delete()
     
