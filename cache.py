@@ -19,7 +19,7 @@ class Cache:
         """ Sets the page body `body` at page `page`. Expires after `config.PAGE_CACHE_EXPIRY` seconds. """
         await self._redis.hmset(page, {
             "body": body,
-            "expires": int(time()) + PAGE_CACHE_EXPIRY
+            "expires": int(time() + PAGE_CACHE_EXPIRY)
         })
     
     async def get_body_expired(self, page) -> Tuple[Optional[str], bool]:
@@ -29,7 +29,7 @@ class Cache:
             "expires"
         ])
         
-        if int(time()) > expires:
+        if int(time()) > int(expires):
             return None, True
         else:
             return body, False
