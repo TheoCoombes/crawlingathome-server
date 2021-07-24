@@ -73,7 +73,7 @@ class MarkAsDoneInput(BaseModel):
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
     try:
-        body, expired = await cache.get_body_expired('/')
+        body, expired = await cache.get_body_expired(f'/?all={all}')
         if not expired:
             return HTMLResponse(content=body)
         else:
@@ -110,7 +110,7 @@ async def index(request: Request, all: Optional[bool] = False):
     })
 
     # Set page cache with body.
-    await cache.set('/', str(body))
+    await cache.set(f'/?all={all}', str(body))
 
     return body
     
