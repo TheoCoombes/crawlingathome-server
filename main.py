@@ -99,6 +99,7 @@ async def index(request: Request, all: Optional[bool] = False):
 
     body = templates.TemplateResponse('index.html', {
         "request": request,
+        "len": len, # For some reason "| length" doesn't work on the client lists?
         "all": all,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
