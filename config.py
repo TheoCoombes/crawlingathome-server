@@ -1,7 +1,7 @@
 # Crawling@Home Server Configuration
 
 # DATABASE CONFIG
-SQL_CONN_URL = "postgres://test_user:test_pass@localhost:5432/test_db" # Example config for a postgres database. Works with any databases supported by Tortoise ORM.
+SQL_CONN_URL = "postgres:///crawlingathome" # Example config for a postgres database. Works with any databases supported by Tortoise ORM.
 REDIS_CONN_URL = "redis://localhost" # The Redis connection URL, used for caching webpages to avoid database strain.
 
 # WORKER CONFIG
