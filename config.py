@@ -15,7 +15,7 @@ AVERAGE_DATASET_LENGTH = 10 # The maximum amount of measurements for the average
 ADMIN_PASSWORD = "password"
 
 # CACHE
-PAGE_CACHE_EXPIRY = 60 # The number of seconds until the page cache is cleared and the page is re-rendered. (avoids database strain)
+PAGE_CACHE_EXPIRY = 30 # The number of seconds until the page cache is cleared and the page is re-rendered. (avoids database strain)
 
 # UPLOAD URLS
 UPLOAD_URLS = [
