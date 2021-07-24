@@ -581,7 +581,7 @@ async def http_exception_handler(request, exc):
 register_tortoise(
     app,
     db_url=SQL_CONN_URL,
-    modules={"models": ["app_db"]},
+    modules={"models": ["app.models"]},
     generate_schemas=True,
     add_exception_handlers=True,
 )
