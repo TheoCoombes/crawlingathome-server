@@ -90,6 +90,7 @@ async def index(request: Request, all: Optional[bool] = False):
 
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
+        print(len(hybrid_clients), hybrid_clients)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
@@ -99,7 +100,6 @@ async def index(request: Request, all: Optional[bool] = False):
 
     body = templates.TemplateResponse('index.html', {
         "request": request,
-        "len": len, # For some reason "| length" doesn't work on the client lists?
         "all": all,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
