@@ -90,7 +90,6 @@ async def index(request: Request, all: Optional[bool] = False):
 
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
-        print(len(hybrid_clients), hybrid_clients)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
@@ -101,9 +100,9 @@ async def index(request: Request, all: Optional[bool] = False):
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
-        "hybrid_clients": hybrid_clients,
-        "cpu_clients": cpu_clients,
-        "gpu_clients": gpu_clients,
+        "hybrid_clients": [len(hybrid_clients), hybrid_clients],
+        "cpu_clients": [len(cpu_clients), cpu_clients], # ^v Jinja2 seems to have issues calculating the length of those
+        "gpu_clients": [len(gpu_clients), gpu_clients],
         "completion_float": completed / total if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": sum([i.pairs_scraped for i in await Leaderboard.all()]),
