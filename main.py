@@ -10,10 +10,9 @@ from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as new_name
-from time import time, sleep
 from random import choice
 from uuid import uuid4
-import numpy as np
+from time import time
 import aiofiles
 import json
 
@@ -144,7 +143,7 @@ async def leaderboard_page(request: Request):
     })
     
     # Set page cache with body.
-    await cache.set('/leaderboard', body.content)
+    await cache.set('/leaderboard', str(body))
     
     return body
 
@@ -168,7 +167,7 @@ async def data():
     try:
         body, expired = await cache.get_body_expired('/data')
         if not expired:
-            return body
+            return json.loads(body)
         else:
             # Cache has expired, we need to re-render the page body.
             pass
@@ -187,7 +186,7 @@ async def data():
     }
     
     # Set page cache with body.
-    await cache.set('/data', body)
+    await cache.set('/data', json.dumps(body))
     
     return body
 
@@ -315,7 +314,7 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     await shards.update(closed=True, pending=False, completor=inp.nickname)
     
     if existed > 0:
-        user = await Leaderboard.get_or_create(nickname=inp.nickname)
+        user, created = await Leaderboard.get_or_create(nickname=inp.nickname)
         
         job_count = user.job_count + existed
         pairs_scraped = user.pairs_scraped + inp.count
@@ -447,7 +446,7 @@ async def markAsDone(inp: TokenCountInput):
         await client.shard.update(gpu=True, pending=False, gpu_url=inp.url, cpu_completor=client.user_nickname)
         await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
 
-        user = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)    
+        user, created = await Leaderboard_CPU.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1))
         
         # completion + completion_str are not affected by CPU jobs.
@@ -460,7 +459,7 @@ async def markAsDone(inp: TokenCountInput):
         await client.shard.update(closed=True, pending=False, completor=client.user_nickname)
         await client.update(shard=None, progress="Completed Job", last_seen=int(time()), jobs_completed=(client.jobs_completed+1))
 
-        user = await Leaderboard.get_or_create(nickname=client.user_nickname)    
+        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)    
         await user.update(job_count=(user.job_count + 1), pairs_scraped=(user.pairs_scraped + inp.count))
 
         return "success"
