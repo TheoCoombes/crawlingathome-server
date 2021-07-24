@@ -568,11 +568,11 @@ async def check_idle():
         await asyncio.sleep(5) # TODO increase to 300
         t = int(time()) - IDLE_TIMEOUT
         
-        shards = await Client.filter(last_seen__lte=t, shard_id__isnull=True).prefetch_related("shard")
-        for shard in shards:
-            if shard.pending:
-                shard.pending = False
-                await shard.save()
+        clients = await Client.filter(last_seen__lte=t, shard_id__isnull=True).prefetch_related("shard")
+        for client in clients:
+            if client.shard.pending:
+                client.shard.pending = False
+                await client.shard.save()
         
         await Client.filter(last_seen__lte=t).delete()
 
