@@ -316,8 +316,8 @@ async def custom_markasdone(inp: MarkAsDoneInput):
     if existed > 0:
         user = await Leaderboard.get_or_create(nickname=inp.nickname)
         
-        job_count = user.job_count += existed
-        pairs_scraped = user.pairs_scraped += inp.count
+        job_count = user.job_count + existed
+        pairs_scraped = user.pairs_scraped + inp.count
         
         await user.update(job_count=job_count, pairs_scraped=pairs_scraped)
  
