@@ -90,6 +90,7 @@ async def index(request: Request, all: Optional[bool] = False):
 
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
+        print(hybrid_clients[0].shard, type(hybrid_clients[0].shard))
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
