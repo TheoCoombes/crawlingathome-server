@@ -73,8 +73,10 @@ class MarkAsDoneInput(BaseModel):
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
     try:
+        print("fetching...")
         body, expired = await cache.get_body_expired(f'/?all={all}')
         if not expired:
+            print("responding...")
             return HTMLResponse(content=body)
         else:
             # Cache has expired, we need to re-render the page body.
