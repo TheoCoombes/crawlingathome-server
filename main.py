@@ -374,7 +374,7 @@ async def newJob(inp: TokenInput):
         raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
     
     if client.shard is not None and client.shard.pending:
-        await client.shard.pending = False
+        client.shard.pending = False
         await client.shard.save()
 
     if inp.type == "GPU":         
