@@ -120,13 +120,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for worker in (gpu_clients | list)[-50:] %}
+                    {% for worker in gpu_clients %}
                         <tr>
                             <th scope="row"><a href="/worker/gpu/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
                             {% if worker.shard is None %}
                                 <td><i>Waiting</i></td>
                             {% else %}
-                               <td>{{ "{:,}".format(worker.shard.number"]) }}</td>
+                               <td>{{ "{:,}".format(worker.shard.number) }}</td>
                             {% endif %}
                             <td>{{ worker.progress }}</td>
                             <td>{{ "{:,}".format(worker.jobs_completed) }}</td>
