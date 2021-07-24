@@ -96,6 +96,8 @@ async def index(request: Request, all: Optional[bool] = False):
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
     else:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen")
+        for client in hybrid_clients:
+            print(client)
         cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
 
