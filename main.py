@@ -90,19 +90,16 @@ async def index(request: Request, all: Optional[bool] = False):
 
     if all:
         hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen").limit(50)
-        print(hybrid_clients[0].shard.number)
-        await asyncio.sleep(10)
-        cpu_clients = await Client.filter(type="CPU").order_by("first_seen").limit(50)
-        gpu_clients = await Client.filter(type="GPU").order_by("first_seen").limit(50)
+        cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen").limit(50)
+        gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen").limit(50)
     else:
-        hybrid_clients = await Client.filter(type="HYBRID").order_by("first_seen")
-        cpu_clients = await Client.filter(type="CPU").order_by("first_seen")
-        gpu_clients = await Client.filter(type="GPU").order_by("first_seen")
+        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen")
+        cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen")
+        gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen")
         
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
-        "bool": bool,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
