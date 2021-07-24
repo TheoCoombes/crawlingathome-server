@@ -1,5 +1,5 @@
 from tortoise import Tortoise, run_async
-from config import SQL_DB_URL
+from config import SQL_CONN_URL
 from models import *
 import numpy as np
 import json
