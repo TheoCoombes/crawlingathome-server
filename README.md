@@ -4,9 +4,6 @@ A server powering Crawling@Home's effort to filter CommonCrawl with CLIP, buildi
 * Worker Repo: [Wikidepia/crawlingathome-worker](https://github.com/Wikidepia/crawlingathome-worker)
 * Live Server: http://crawlingathome.duckdns.org/
 
-## UPDATE
-`jobs/open.json` is now too big to store on GitHub. You can download it from .
-
 ## Installation
 1. Install requirements
 ```
