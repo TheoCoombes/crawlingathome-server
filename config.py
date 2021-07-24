@@ -1,8 +1,8 @@
 # Crawling@Home Server Configuration
 
 # DATABASE CONFIG
-SQL_DB_URL = "postgres://test_user:test_pass@localhost:5432/test_db" # Example config for a postgres database. Works with any databases supported by Tortoise ORM.
-REDIS_URL = "redis://localhost" # The Redis connection URL, used for caching webpages to avoid database strain.
+SQL_CONN_URL = "postgres://test_user:test_pass@localhost:5432/test_db" # Example config for a postgres database. Works with any databases supported by Tortoise ORM.
+REDIS_CONN_URL = "redis://localhost" # The Redis connection URL, used for caching webpages to avoid database strain.
 
 # WORKER CONFIG
 IDLE_TIMEOUT = 1800 # The interval until a worker is kicked for being idle. (3 hours)
