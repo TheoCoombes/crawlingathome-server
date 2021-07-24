@@ -355,7 +355,10 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 async def validateWorker(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    return str(await Client.exists(uuid=inp.token, type=inp.type))
+        
+    exists = await Client.exists(uuid=inp.token, type=inp.type)
+    
+    return str(exists)
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
@@ -383,6 +386,9 @@ async def newJob(inp: TokenInput):
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
+        if job is None:
+            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            
         job.pending = True
         await job.save()
         
