@@ -46,7 +46,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in leaderboard %}
+                    {% for user in cpu_leaderboard %}
                         <tr>
                             <th scope="row">{{ user.nickname }}</th>
                             <td>{{ "{:,}".format(user.jobs_completed) }}</td>
