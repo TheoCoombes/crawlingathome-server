@@ -13,6 +13,7 @@ from name import new as new_name
 from random import choice
 from uuid import uuid4
 from time import time
+import aiofiles
 import json
 
 from config import *
@@ -385,12 +386,15 @@ async def newJob(inp: TokenInput):
 
     if inp.type == "GPU":         
         try:
-            job = (await Job.filter(pending=False, closed=False, gpu=True).order_by("number").first().update(pending=True)).model
+            job = await Job.filter(pending=False, closed=False, gpu=True).first()
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
         if job is None:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            
+        job.pending = True
+        await job.save()
         
         client.shard = job
         client.progress = "Recieved new job"
@@ -400,9 +404,12 @@ async def newJob(inp: TokenInput):
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
     else:
         try:
-            job = (await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().update(pending=True)).model
+            job = await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first()
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+        
+        job.pending = True
+        await job.save()
         
         client.shard = job
         client.progress = "Recieved new job"
