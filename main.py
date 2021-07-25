@@ -138,8 +138,8 @@ async def leaderboard_page(request: Request):
     
     body = templates.TemplateResponse('leaderboard.html', {
         "request": request,
-        "leaderboard": await Leaderboard.all().order_by("jobs_completed"),
-        "cpu_leaderboard": await CPU_Leaderboard.all().order_by("jobs_completed")
+        "leaderboard": await Leaderboard.all().order_by("-jobs_completed"),
+        "cpu_leaderboard": await CPU_Leaderboard.all().order_by("-jobs_completed")
     })
     
     # Set page cache with body.
