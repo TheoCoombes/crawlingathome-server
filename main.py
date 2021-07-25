@@ -410,6 +410,7 @@ async def newJob(inp: TokenInput):
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
             await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().update(completor=client.uuid, pending=True)
+            await asyncio.sleep(0.01)
             job = await Job.get(completor=client.uuid)
         except Exception as e:
             print(e)
