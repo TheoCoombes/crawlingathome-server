@@ -414,7 +414,7 @@ async def newJob(inp: TokenInput):
             job = await Job.get(completor=client.uuid)
         except Exception as e:
             print(e)
-            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            raise HTTPException(status_code=503, detail="Something went wrong. Perhaps there are no jobs left?")
         
         job.completor = None
         await job.save()
