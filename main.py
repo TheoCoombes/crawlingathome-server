@@ -388,7 +388,7 @@ async def newJob(inp: TokenInput):
         try:
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
-            await Job.filter(pending=False, closed=False, gpu=True).order_by("number").first().update(completor=client.uuid, pending=True)
+            await Job.filter(pending=False, closed=False, gpu=True).order_by("number").limit(1).update(completor=client.uuid, pending=True)
             job = await Job.get(completor=client.uuid)
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
@@ -409,7 +409,7 @@ async def newJob(inp: TokenInput):
         try:
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
-            await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().update(completor=client.uuid, pending=True)
+            await Job.filter(pending=False, closed=False, gpu=False).order_by("number").limit(1).update(completor=client.uuid, pending=True)
             job = await Job.get(completor=client.uuid)
         except Exception as e:
             print(e)
