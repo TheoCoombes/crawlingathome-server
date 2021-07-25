@@ -386,14 +386,17 @@ async def newJob(inp: TokenInput):
 
     if inp.type == "GPU":         
         try:
-            job = await Job.filter(pending=False, closed=False, gpu=True).first()
+            # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
+            # This helps us avoid workers getting assigned the same job.
+            await Job.filter(pending=False, closed=False, gpu=True).order_by("number").first().update(completor=client.uuid, pending=True)
+            job = await Job.get(completor=client.uuid)
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
         if job is None:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
             
-        job.pending = True
+        job.completor = None
         await job.save()
         
         client.shard = job
@@ -404,11 +407,14 @@ async def newJob(inp: TokenInput):
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
     else:
         try:
-            job = await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first()
+            # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
+            # This helps us avoid workers getting assigned the same job.
+            await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().update(completor=client.uuid, pending=True)
+            job = await Job.get(completor=client.uuid)
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
-        job.pending = True
+        job.completor = None
         await job.save()
         
         client.shard = job
