@@ -411,7 +411,8 @@ async def newJob(inp: TokenInput):
             # This helps us avoid workers getting assigned the same job.
             await Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().update(completor=client.uuid, pending=True)
             job = await Job.get(completor=client.uuid)
-        except:
+        except Exception as e:
+            print(e)
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
         job.completor = None
