@@ -4,8 +4,8 @@ from fastapi.templating import Jinja2Templates
 
 import asyncio
 from typing import Optional
-from tortoise import Tortoise
 from pydantic import BaseModel
+from tortoise.transactions import in_transaction
 from tortoise.contrib.fastapi import register_tortoise
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -388,8 +388,12 @@ async def newJob(inp: TokenInput):
         try:
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
-            await Job.filter(pending=False, closed=False, gpu=True).order_by("number").limit(1).update(completor=client.uuid, pending=True)
-            job = await Job.get(completor=client.uuid)
+            # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
+            async with in_transaction() as conn:
+                await conn.execute_query(
+                    f"""UPDATE "job" SET pending=true, completor='{client.uuid}' WHERE "number" IN (SELECT "number" FROM "job" WHERE pending=false AND closed=false AND gpu=true ORDER BY "number" ASC LIMIT 1)"""
+                )
+            job = await Job.get(completor=client.uuid, pending=True)
         except:
             raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
@@ -409,12 +413,14 @@ async def newJob(inp: TokenInput):
         try:
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
-            print(Job.filter(pending=False, closed=False, gpu=False).order_by("number").first().sql())
-            await Job.filter(pending=False, closed=False, gpu=False).order_by("number").limit(1).update(completor=client.uuid, pending=True)
-            job = await Job.get(completor=client.uuid)
-        except Exception as e:
-            print(e)
-            raise HTTPException(status_code=503, detail="Something went wrong. Perhaps there are no jobs left?")
+            # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
+            async with in_transaction() as conn:
+                await conn.execute_query(
+                    f"""UPDATE "job" SET pending=true, completor='{client.uuid}' WHERE "number" IN (SELECT "number" FROM "job" WHERE pending=false AND closed=false AND gpu=false ORDER BY "number" ASC LIMIT 1)"""
+                )
+            job = await Job.get(completor=client.uuid, pending=True)
+        except:
+            raise HTTPException(status_code=503, detail="Either there are no more jobs available or there are not enough ")
         
         job.completor = None
         await job.save()
@@ -641,11 +647,6 @@ async def calculate_eta():
 async def app_startup():
     asyncio.create_task(check_idle())
     asyncio.create_task(calculate_eta())
-
-        
-@app.on_event('shutdown')
-async def app_shutdown():
-    await Tortoise.close_connections()
         
 
 @app.exception_handler(StarletteHTTPException)
