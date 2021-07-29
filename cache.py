@@ -54,7 +54,7 @@ class Cache:
         if sleep:
             await asyncio.sleep(0.25)
             
-        self.worker = await self.client.lpos("workers", self.pid)
+        self.worker = await self.client.lpos("workers", pid)
     
     
     async def safeExit(self) -> None:
