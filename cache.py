@@ -54,7 +54,7 @@ class Cache:
         if sleep:
             await asyncio.sleep(0.25)
             
-        self.worker = await self.client.lpos("workers", pid)
+        self.iszeroworker = (pid == await self.client.lrange("workers", 0, 0)[0])
     
     
     async def safeShutdown(self) -> None:
