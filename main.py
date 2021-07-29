@@ -654,7 +654,7 @@ async def app_startup():
     # Finds the worker number for this worker.
     await cache.initPID()
     
-    if cache.worker == 0:
+    if cache.iszeroworker:
         # The following functions only need to be executed on a single worker.
         asyncio.create_task(check_idle())
         asyncio.create_task(calculate_eta())
