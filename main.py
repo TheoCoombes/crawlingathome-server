@@ -112,7 +112,7 @@ async def index(request: Request, all: Optional[bool] = False):
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": sum([i.pairs_scraped for i in await Leaderboard.all()]),
-        "eta": str(await cache.client.get("eta"))
+        "eta": (await cache.client.get("eta")).decode()
     })
 
     # Set page cache with body.
@@ -188,7 +188,7 @@ async def data():
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "total_connected_workers": await Client.all().count(),
         "total_pairs_scraped": sum([i.pairs_scraped for i in await Leaderboard.all()]),
-        "eta": str(await cache.client.get("eta"))
+        "eta": (await cache.client.get("eta")).decode()
     }
     
     # Set page cache with body.
