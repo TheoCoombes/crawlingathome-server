@@ -21,9 +21,9 @@
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Connected Hybrid Workers - {{ "{:,}".format(hybrid_clients | length) }}</h2>
+        <h2>Connected Hybrid Workers - {{ "{:,}".format(len_hybrid) }}</h2>
         <br>
-        {% if (hybrid_clients | length) != 0 %}
+        {% if len_hybrid != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -53,7 +53,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (hybrid_clients | length) > 50 and not all %}
+            {% if len_hybrid > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion_float == 100.0 %}
@@ -63,9 +63,9 @@
         {% endif %}
         <br><br>
         
-        <h2>Connected CPU Workers - {{ "{:,}".format(cpu_clients | length) }}</h2>
+        <h2>Connected CPU Workers - {{ "{:,}".format(len_cpu) }}</h2>
         <br>
-        {% if (cpu_clients | length) != 0 %}
+        {% if len_cpu != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -95,7 +95,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (cpu_clients | length) > 50 and not all %}
+            {% if len_cpu > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion_float == 100.0 %}
@@ -105,9 +105,9 @@
         {% endif %}
         <br><br>
         
-        <h2>Connected GPU Workers - {{ "{:,}".format(gpu_clients | length) }}</h2>
+        <h2>Connected GPU Workers - {{ "{:,}".format(len_gpu) }}</h2>
         <br>
-        {% if (gpu_clients | length) != 0 %}
+        {% if len_gpu != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -137,7 +137,7 @@
                 </tbody>
             </table>
             <br>
-            {% if (gpu_clients | length) > 50 and not all %}
+            {% if len_gpu > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion_float == 100.0 %}
@@ -168,7 +168,7 @@
 
         <br><br>
 
-        Server Version: v3.0.1 <br>
+        Server Version: v3.1.0 <br>
         Latest Client Version: v1.4.1 <br><br>
 
         <script src="https://cdn.jsdelivr.net/gh/TheoCoombes/crawlingathome-server@main/cdn/main.js"></script>

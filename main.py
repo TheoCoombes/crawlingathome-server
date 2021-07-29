@@ -26,7 +26,6 @@ cache = Cache(REDIS_CONN_URL)
 templates = Jinja2Templates(directory="templates")
 
 types = ["HYBRID", "CPU", "GPU"]
-eta = "Calculating..."
 
 
 # REQUEST INPUTS START ------
@@ -73,7 +72,7 @@ class MarkAsDoneInput(BaseModel):
 @app.get('/', response_class=HTMLResponse)
 async def index(request: Request, all: Optional[bool] = False):
     try:
-        body, expired = await cache.get_body_expired(f'/?all={all}')
+        body, expired = await cache.page.get_body_expired(f'/?all={all}')
         if not expired:
             return HTMLResponse(content=body)
         else:
@@ -88,7 +87,7 @@ async def index(request: Request, all: Optional[bool] = False):
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
 
-    if all:
+    if not all:
         hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
         cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen").limit(50)
@@ -96,6 +95,10 @@ async def index(request: Request, all: Optional[bool] = False):
         hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen")
         cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen")
+    
+    len_hybrid = await Client.filter(type="HYBRID").count()
+    len_cpu = await Client.filter(type="CPU").count()
+    len_gpu = await Client.filter(type="GPU").count()
         
     body = templates.TemplateResponse('index.html', {
         "request": request,
@@ -103,14 +106,17 @@ async def index(request: Request, all: Optional[bool] = False):
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
+        "len_hybrid": len_hybrid,
+        "len_cpu": len_cpu,
+        "len_gpu": len_gpu,
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": sum([i.pairs_scraped for i in await Leaderboard.all()]),
-        "eta": eta
+        "eta": await cache.client.get("eta")
     })
 
     # Set page cache with body.
-    await cache.set(f'/?all={all}', body.body)
+    await cache.page.set(f'/?all={all}', body.body)
 
     return body
     
@@ -126,7 +132,7 @@ async def install(request: Request):
 @app.get('/leaderboard', response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
     try:
-        body, expired = await cache.get_body_expired('/leaderboard')
+        body, expired = await cache.page.get_body_expired('/leaderboard')
         if not expired:
             return HTMLResponse(content=body)
         else:
@@ -143,7 +149,7 @@ async def leaderboard_page(request: Request):
     })
     
     # Set page cache with body.
-    await cache.set('/leaderboard', body.body)
+    await cache.page.set('/leaderboard', body.body)
     
     return body
 
@@ -165,7 +171,7 @@ async def worker_info(type: str, display_name: str, request: Request):
 @app.get('/data')
 async def data():
     try:
-        body, expired = await cache.get_body_expired('/data')
+        body, expired = await cache.page.get_body_expired('/data')
         if not expired:
             return json.loads(body)
         else:
@@ -182,11 +188,11 @@ async def data():
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "total_connected_workers": await Client.all().count(),
         "total_pairs_scraped": sum([i.pairs_scraped for i in await Leaderboard.all()]),
-        "eta": eta
+        "eta": await cache.client.get("eta")
     }
     
     # Set page cache with body.
-    await cache.set('/data', json.dumps(body))
+    await cache.page.set('/data', json.dumps(body))
     
     return body
 
@@ -592,6 +598,8 @@ async def check_idle():
 
         
 async def calculate_eta():
+    await cache.client.set("eta", "Calculating...")
+    
     def _format_time(s):
         s = int(s)
         y, s = divmod(s, 31_536_000)
@@ -608,8 +616,6 @@ async def calculate_eta():
             return f"{m} minute{'s' if m!=1 else ''} and {s} second{'s' if s!=1 else ''}"
         else:
             return f"{s} second{'s' if s!=1 else ''}"
-
-    global eta
         
     dataset = []
     while True:
@@ -635,9 +641,9 @@ async def calculate_eta():
             continue
         
         if length:
-            eta = _format_time(length)
+            await cache.client.set("eta", _format_time(length))
         else:
-            eta = "Finished"
+            await cache.client.set("eta", "Finished")
         
 
 # FASTAPI UTILITIES START ------ 
@@ -645,9 +651,19 @@ async def calculate_eta():
     
 @app.on_event('startup')
 async def app_startup():
-    asyncio.create_task(check_idle())
-    asyncio.create_task(calculate_eta())
-        
+    # Finds the worker number for this worker.
+    await cache.initPID()
+    
+    if cache.worker == 0:
+        # The following functions only need to be executed on a single worker.
+        asyncio.create_task(check_idle())
+        asyncio.create_task(calculate_eta())
+
+
+@app.on_event('shutdown')
+async def app_shutdown():
+    await cache.safeShutdown()
+
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
