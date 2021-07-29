@@ -662,8 +662,7 @@ async def app_startup():
 
 @app.on_event('shutdown')
 async def app_shutdown():
-    if cache.worker == 0:
-        await cache.safeShutdown()
+    await cache.safeShutdown()
 
 
 @app.exception_handler(StarletteHTTPException)
