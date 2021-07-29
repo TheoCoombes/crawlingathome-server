@@ -48,7 +48,7 @@ class Cache:
     
     async def initPID(self, sleep: bool = True) -> None:
         """ Gets the current process ID, and pushes it to the Redis `workers` list. """
-        self.pid = getpid()
+        pid = getpid()
         await self.client.rpush("workers", pid)
         
         if sleep:
