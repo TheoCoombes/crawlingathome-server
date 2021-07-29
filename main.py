@@ -658,7 +658,13 @@ async def app_startup():
         # The following functions only need to be executed on a single worker.
         asyncio.create_task(check_idle())
         asyncio.create_task(calculate_eta())
-        
+
+
+@app.on_event('shutdown')
+async def app_shutdown():
+    if cache.worker == 0:
+        await cache.safeShutdown()
+
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
