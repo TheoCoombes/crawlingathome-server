@@ -57,7 +57,7 @@ class Cache:
         self.worker = await self.client.lpos("workers", pid)
     
     
-    async def safeExit(self) -> None:
+    async def safeShutdown(self) -> None:
         """ [IMPORTANT] Resets the workers list to allow the server to
                                         safely turn back on again. """
         await self.client.delete("workers")
