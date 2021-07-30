@@ -98,3 +98,34 @@ class CPU_Leaderboard(Model):
     
     # Data about the user.
     jobs_completed = fields.IntField(default=0)
+
+    
+# CUSTOM SQL QUERIES:
+
+CUSTOM_QUERY_GPU = """
+UPDATE "job" 
+SET pending=true, completor='{}' 
+WHERE "number" IN 
+    (
+     SELECT "number" FROM "job" 
+     WHERE pending=false AND closed=false AND gpu=true 
+     ORDER BY "number" ASC LIMIT 1
+     FOR UPDATE SKIP LOCKED
+    )
+  AND pending=false AND closed=false AND gpu=true
+;
+"""
+
+CUSTOM_QUERY_CPU_HYBRID = """
+UPDATE "job" 
+SET pending=true, completor='{}' 
+WHERE "number" IN 
+    (
+     SELECT "number" FROM "job" 
+     WHERE pending=false AND closed=false AND gpu=false 
+     ORDER BY "number" ASC LIMIT 1
+     FOR UPDATE SKIP LOCKED
+    )
+  AND pending=false AND closed=false AND gpu=false
+;
+"""
