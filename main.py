@@ -397,7 +397,7 @@ async def newJob(inp: TokenInput):
             # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
             async with in_transaction() as conn:
                 await conn.execute_query(
-                    f"""UPDATE "job" SET pending=true, completor='{client.uuid}' WHERE "number" IN (SELECT "number" FROM "job" WHERE pending=false AND closed=false AND gpu=true ORDER BY "number" ASC LIMIT 1)"""
+                    CUSTOM_QUERY_GPU.format(client.uuid)
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
@@ -414,7 +414,7 @@ async def newJob(inp: TokenInput):
         client.last_seen = int(time())
         await client.save()
         
-        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
+        return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
     else:
         try:
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
@@ -422,7 +422,7 @@ async def newJob(inp: TokenInput):
             # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
             async with in_transaction() as conn:
                 await conn.execute_query(
-                    f"""UPDATE "job" SET pending=true, completor='{client.uuid}' WHERE "number" IN (SELECT "number" FROM "job" WHERE pending=false AND closed=false AND gpu=false ORDER BY "number" ASC LIMIT 1)"""
+                    CUSTOM_QUERY_CPU_HYBRID.format(client.uuid)
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
@@ -436,7 +436,7 @@ async def newJob(inp: TokenInput):
         client.last_seen = int(time())
         await client.save()      
         
-        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk}
+        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
