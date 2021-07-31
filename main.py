@@ -163,7 +163,7 @@ async def worker_info(type: str, display_name: str, request: Request):
     try:
         data = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
     except:
-        raise HTTPException(status_code=500, detail="Worker not found.")
+        raise HTTPException(status_code=404, detail="Worker not found.")
     
     return templates.TemplateResponse('worker.html', {"request": request, "c": data})
 
@@ -216,7 +216,7 @@ async def worker_data(type: str, display_name: str):
             "type": c.type
         }
     except:
-        raise HTTPException(status_code=500, detail="Worker not found.")
+        raise HTTPException(status_code=404, detail="Worker not found.")
             
         
 # ADMIN START ------
@@ -384,7 +384,7 @@ async def newJob(inp: TokenInput):
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
     if client.shard is not None and client.shard.pending:
         client.shard.pending = False
@@ -401,10 +401,10 @@ async def newJob(inp: TokenInput):
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
-            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            raise HTTPException(status_code=403, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
         
         if job is None:
-            raise HTTPException(status_code=503, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            raise HTTPException(status_code=403, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
             
         job.completor = None
         await job.save()
@@ -426,7 +426,7 @@ async def newJob(inp: TokenInput):
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
-            raise HTTPException(status_code=503, detail="Either there are no more jobs available or there are not enough ")
+            raise HTTPException(status_code=403, detail="No more jobs available.")
         
         job.completor = None
         await job.save()
@@ -460,7 +460,7 @@ async def updateProgress(inp: TokenProgressInput):
     try:
         await Client.get(uuid=inp.token, type=inp.type).update(progress=inp.progress, last_seen=int(time()))
     except:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
     return "success"
 
@@ -473,16 +473,16 @@ async def markAsDone(inp: TokenCountInput):
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
     if client.shard is None:
-        raise HTTPException(status_code=500, detail="You do not have an open job.")
+        raise HTTPException(status_code=403, detail="You do not have an open job.")
     if client.shard.closed:
-        raise HTTPException(status_code=500, detail="This job has already been marked as completed!")
+        raise HTTPException(status_code=403, detail="This job has already been marked as completed!")
     
     if inp.type == "CPU":
         if inp.url is None:
-            raise HTTPException(status_code=500, detail="The worker did not submit valid download data.")
+            raise HTTPException(status_code=400, detail="The worker did not submit valid download data.")
         
         client.shard.gpu = True
         client.shard.pending = False
@@ -509,7 +509,7 @@ async def markAsDone(inp: TokenCountInput):
         return "success"
     else:
         if not inp.count:
-            raise HTTPException(status_code=500, detail="The worker did not submit a valid count!")
+            raise HTTPException(status_code=400, detail="The worker did not submit a valid count!")
         
         client.shard.closed = True
         client.shard.pending = False
@@ -543,10 +543,10 @@ async def gpuInvalidDownload(inp: TokenInput):
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
     if client.shard is None:
-        raise HTTPException(status_code=500, detail="You are not currently working on a job!")
+        raise HTTPException(status_code=403, detail="This worker is not currently working on a job.")
     
     client.shard.gpu_url = None
     client.shard.gpu = False
@@ -569,7 +569,7 @@ async def bye(inp: TokenInput):
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
-        raise HTTPException(status_code=500, detail="The server could not find this worker. Did the server just restart?")
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
         
     if client.shard != None:
         client.shard.pending = False
