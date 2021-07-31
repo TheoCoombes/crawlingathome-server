@@ -366,8 +366,13 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
         last_seen=ctime,
         shard=None
     )
+    
+    if type == "CPU":
+        upload_addr = choice(UPLOAD_CPU_ADDRS)
+    else:
+        upload_addr = choice(UPLOAD_ADDRS)
 
-    return {"display_name": display_name, "token": uuid, "upload_address": choice(UPLOAD_URLS)}
+    return {"display_name": display_name, "token": uuid, "upload_address": upload_addr}
 
 
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
@@ -381,8 +386,11 @@ async def validateWorker(inp: TokenInput):
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
-async def getUploadAddress():
-    return choice(UPLOAD_URLS)
+async def getUploadAddress(type: Optional[str] = "HYBRID"):
+    if type == "CPU":
+        return choice(UPLOAD_CPU_ADDRS)
+    else:
+        return choice(UPLOAD_ADDRS)
 
 
 @app.post('/api/newJob')
