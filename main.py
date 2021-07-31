@@ -401,10 +401,10 @@ async def newJob(inp: TokenInput):
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
-            raise HTTPException(status_code=403, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            raise HTTPException(status_code=403, detail="Either there are no new GPU jobs available, or there was an error whilst finding a job. Keep retrying, as GPU jobs are dynamically created.")
         
         if job is None:
-            raise HTTPException(status_code=403, detail="No new GPU jobs available. Keep retrying, as GPU jobs are dynamically created.")
+            raise HTTPException(status_code=403, detail="Either there are no new GPU jobs available, or there was an error whilst finding a job. Keep retrying, as GPU jobs are dynamically created.")
             
         job.completor = None
         await job.save()
@@ -426,7 +426,7 @@ async def newJob(inp: TokenInput):
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
-            raise HTTPException(status_code=403, detail="No more jobs available.")
+            raise HTTPException(status_code=403, detail="Either there are no more jobs available, or an error occurred whilst finding a job.")
         
         job.completor = None
         await job.save()
