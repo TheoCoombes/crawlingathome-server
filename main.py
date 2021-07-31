@@ -332,8 +332,21 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         return {"status": "success"}
     else:
         return {"status": "failed", "detail": "All shards have already been completed by another worker."}
-            
+ 
+
+@app.get('/api/server/isCompleted', response_class=PlainTextResponse)
+async def isCompleted(address: str):
+    try:
+        job = await Job.get(gpu_url=address)
+    except:
+        return "1"
     
+    if job.closed:
+        return "1"
+    else:
+        return "0"
+
+
 # API START ------
 
 
