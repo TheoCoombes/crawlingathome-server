@@ -64,6 +64,9 @@ class MarkAsDoneInput(BaseModel):
     shards: list
     count: int
     nickname: str
+
+class IsCompleteInput(BaseModel):
+    addresses: list
         
 
 # FRONTEND START ------
@@ -334,17 +337,10 @@ async def custom_markasdone(inp: MarkAsDoneInput):
         return {"status": "failed", "detail": "All shards have already been completed by another worker."}
  
 
-@app.get('/api/server/isCompleted', response_class=PlainTextResponse)
-async def isCompleted(address: str):
-    try:
-        job = await Job.get(gpu_url=address)
-    except:
-        return "1"
-    
-    if job.closed:
-        return "1"
-    else:
-        return "0"
+@app.post('/api/isCompleted')
+async def isCompleted(inp: IsCompleteInput):
+    jobs = await Job.filter(gpu_url__in=inp.addresses, closed=True)
+    return [job.gpu_url for job in jobs]
 
 
 # API START ------
