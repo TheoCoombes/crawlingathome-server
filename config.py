@@ -21,6 +21,6 @@ PAGE_CACHE_EXPIRY = 30 # The number of seconds until the page cache is cleared a
 UPLOAD_ADDRS = [
     "archiveteam@88.198.2.17::CAH"
 ]
-UPLOAD_GPU_ADDRS = [
+UPLOAD_CPU_ADDRS = [
     "archiveteam@5.9.55.230::gpujobs"
 ]
