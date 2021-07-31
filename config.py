@@ -17,7 +17,7 @@ ADMIN_PASSWORD = "password"
 # CACHE
 PAGE_CACHE_EXPIRY = 30 # The number of seconds until the page cache is cleared and the page is re-rendered. (avoids database strain)
 
-# UPLOAD URLS
-UPLOAD_URLS = [
-    "archiveteam@88.198.2.17::CAH"
+# UPLOAD ADDRESSES
+UPLOAD_ADDRS = [
+    "archiveteam@5.9.55.230::CAH"
 ]
