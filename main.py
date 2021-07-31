@@ -392,6 +392,9 @@ async def newJob(inp: TokenInput):
 
     if inp.type == "GPU":         
         try:
+            # Empty out any existing jobs that may cause errors.
+            await Job.filter(completor=client.uuid, pending=True).update(completor=None, pending=False)
+            
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
             # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
@@ -403,9 +406,6 @@ async def newJob(inp: TokenInput):
         except:
             raise HTTPException(status_code=403, detail="Either there are no new GPU jobs available, or there was an error whilst finding a job. Keep retrying, as GPU jobs are dynamically created.")
         
-        if job is None:
-            raise HTTPException(status_code=403, detail="Either there are no new GPU jobs available, or there was an error whilst finding a job. Keep retrying, as GPU jobs are dynamically created.")
-            
         job.completor = None
         await job.save()
         
@@ -417,6 +417,9 @@ async def newJob(inp: TokenInput):
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
     else:
         try:
+            # Empty out any existing jobs that may cause errors.
+            await Job.filter(completor=client.uuid, pending=True).update(completor=None, pending=False)
+            
             # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
             # This helps us avoid workers getting assigned the same job.
             # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
