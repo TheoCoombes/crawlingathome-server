@@ -295,7 +295,7 @@ async def set_banner(password: str, text: str):
     if inp.password == ADMIN_PASSWORD:
         if text.upper() == "RESET":
             await cache.delete("banner")
-            return "reset banner")
+            return "reset banner"
         else:
             await cache.client.set("banner", text)
             return "done."
