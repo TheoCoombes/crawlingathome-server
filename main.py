@@ -172,12 +172,14 @@ async def worker_info(type: str, display_name: str, request: Request):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
+    banner = await cache.client.get("banner")
+        
     try:
         data = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
     except:
         raise HTTPException(status_code=404, detail="Worker not found.")
     
-    return templates.TemplateResponse('worker.html', {"request": request, "c": data})
+    return templates.TemplateResponse('worker.html', {"request": request, "c": data, "banner": banner})
 
 
 @app.get('/data')
