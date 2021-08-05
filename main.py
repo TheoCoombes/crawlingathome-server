@@ -130,8 +130,11 @@ async def index(request: Request, all: Optional[bool] = False):
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
+    banner = await cache.client.get("banner")
+    
     return templates.TemplateResponse('install.html', {
-        "request": request
+        "request": request,
+        "banner": banner
     })
 
 
@@ -148,8 +151,11 @@ async def leaderboard_page(request: Request):
         # Cache hasn't yet been set, we need to render the page body.
         pass
     
+    banner = await cache.client.get("banner")
+    
     body = templates.TemplateResponse('leaderboard.html', {
         "request": request,
+        "banner": banner,
         "leaderboard": await Leaderboard.all().order_by("-jobs_completed"),
         "cpu_leaderboard": await CPU_Leaderboard.all().order_by("-jobs_completed")
     })
