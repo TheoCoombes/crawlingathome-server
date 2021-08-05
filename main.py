@@ -89,6 +89,8 @@ async def index(request: Request, all: Optional[bool] = False):
     
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
+    
+    banner = await cache.client.get("banner")
 
     if not all:
         hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
@@ -106,6 +108,7 @@ async def index(request: Request, all: Optional[bool] = False):
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
+        "banner": banner,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
@@ -285,7 +288,16 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
 #         return {"status": "success"}
 #     else:
 #         return {"status": "failed", "detail": "You are not an admin!"}
-    
+
+
+@app.get('/admin/set-banner', response_class=PlainTextResponse)
+async def set_banner(password: str, text: str):
+    if inp.password == ADMIN_PASSWORD:
+        await cache.client.set("banner", text)
+        return "done."
+    else:
+        return "invalid auth"
+
     
 @app.post('/custom/lookup-wat')
 async def lookup_wat(inp: LookupWatInput):
