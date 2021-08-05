@@ -292,7 +292,7 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
 
 @app.get('/admin/set-banner', response_class=PlainTextResponse)
 async def set_banner(password: str, text: str):
-    if inp.password == ADMIN_PASSWORD:
+    if password == ADMIN_PASSWORD:
         if text.upper() == "RESET":
             await cache.delete("banner")
             return "reset banner"
