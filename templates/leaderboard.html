@@ -8,6 +8,10 @@
         <meta http-equiv="refresh" content="30">
 	</head>
 	<body style='margin-left: 25px; margin-right: 25px; margin-top: 25px;'>
+		{% if banner %}
+            <div class="alert alert-primary" role="alert">{{ banner.decode() | safe }}</div>
+            <br>
+        {% endif %}
         <h1>Crawling@Home Dashboard</h1>
         <br><br>
         <h2>Hybrid/GPU Leaderboard</h2>

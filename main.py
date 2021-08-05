@@ -89,6 +89,8 @@ async def index(request: Request, all: Optional[bool] = False):
     
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
+    
+    banner = await cache.client.get("banner")
 
     if not all:
         hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
@@ -106,6 +108,7 @@ async def index(request: Request, all: Optional[bool] = False):
     body = templates.TemplateResponse('index.html', {
         "request": request,
         "all": all,
+        "banner": banner,
         "hybrid_clients": hybrid_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
@@ -127,8 +130,11 @@ async def index(request: Request, all: Optional[bool] = False):
 
 @app.get('/install', response_class=HTMLResponse)
 async def install(request: Request):
+    banner = await cache.client.get("banner")
+    
     return templates.TemplateResponse('install.html', {
-        "request": request
+        "request": request,
+        "banner": banner
     })
 
 
@@ -145,8 +151,11 @@ async def leaderboard_page(request: Request):
         # Cache hasn't yet been set, we need to render the page body.
         pass
     
+    banner = await cache.client.get("banner")
+    
     body = templates.TemplateResponse('leaderboard.html', {
         "request": request,
+        "banner": banner,
         "leaderboard": await Leaderboard.all().order_by("-jobs_completed"),
         "cpu_leaderboard": await CPU_Leaderboard.all().order_by("-jobs_completed")
     })
@@ -163,12 +172,14 @@ async def worker_info(type: str, display_name: str, request: Request):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
+    banner = await cache.client.get("banner")
+        
     try:
         data = await Client.get(display_name=display_name, type=type).prefetch_related("shard")
     except:
         raise HTTPException(status_code=404, detail="Worker not found.")
     
-    return templates.TemplateResponse('worker.html', {"request": request, "c": data})
+    return templates.TemplateResponse('worker.html', {"request": request, "c": data, "banner": banner})
 
 
 @app.get('/data')
@@ -285,7 +296,20 @@ async def reset_shard(inp: BanShardCountInput, request: Request):
 #         return {"status": "success"}
 #     else:
 #         return {"status": "failed", "detail": "You are not an admin!"}
-    
+
+
+@app.get('/admin/set-banner', response_class=PlainTextResponse)
+async def set_banner(password: str, text: str):
+    if password == ADMIN_PASSWORD:
+        if text.upper() == "RESET":
+            await cache.client.delete("banner")
+            return "reset banner"
+        else:
+            await cache.client.set("banner", text)
+            return "done."
+    else:
+        return "invalid auth"
+
     
 @app.post('/custom/lookup-wat')
 async def lookup_wat(inp: LookupWatInput):
