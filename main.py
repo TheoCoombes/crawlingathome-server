@@ -540,15 +540,11 @@ async def markAsDone(inp: TokenCountInput):
         client.last_seen = int(time())
         await client.save()
 
-        user, created = await CPU_Leaderboard.get_or_create(nickname=client.user_nickname)
-        if created:
-            user.jobs_completed = 1
-        else:
-            user.jobs_completed += 1
-            
-        await user.save()
-        
-        # completion + completion_str are not affected by CPU jobs.
+        await CPU_Leaderboard.get_or_create(nickname=client.user_nickname)
+        async with in_transaction() as conn:
+            await conn.execute_query(
+                CUSTOM_QUERY_CPU_LEADERBOARD.format(client.user_nickname)
+            )
         
         return "success"
     else:
@@ -566,16 +562,12 @@ async def markAsDone(inp: TokenCountInput):
         client.last_seen = int(time())
         await client.save()
 
-        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
-        if created:
-            user.jobs_completed = 1
-            user.pairs_scraped = inp.count
-        else:
-            user.jobs_completed += 1
-            user.pairs_scraped += inp.count
-        
-        await user.save()
-
+        await Leaderboard.get_or_create(nickname=client.user_nickname)
+        async with in_transaction() as conn:
+            await conn.execute_query(
+                CUSTOM_QUERY_LEADERBOARD.format(inp.count, client.user_nickname)
+            )
+            
         return "success"
 
 
