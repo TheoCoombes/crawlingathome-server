@@ -23,6 +23,7 @@ pip install -r requirements.txt
    - In the `crawlingathome-server` folder, create a new folder named 'jobs', and download [this file](https://drive.google.com/file/d/1YiKlmisVJf1ngJv1weRFEaZrt74FSCbH/view?usp=sharing) there.
    - Also create two files there, named `closed.json`, `open_gpu.json` with the text `[]` stored in both.
    - Also create an extra file there named `leaderboard.json`, with the text `{}` stored.
+   - Finally, create another file there named `shard_info.json` with the text `{"directory": "https://commoncrawl.s3.amazonaws.com/", "format": ".gz", "total_shards": 8569338}` stored.
    - You can then run `update_db.py` to setup the jobs database. (this may take a while)
 4. Install ASGI server
    - From v3.0.0, you are required to start the server using a console command directly from the server backend.
