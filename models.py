@@ -109,7 +109,7 @@ WHERE "number" IN
     (
      SELECT "number" FROM "job" 
      WHERE pending=false AND closed=false AND gpu=true 
-     ORDER BY "number" ASC LIMIT 1
+     ORDER BY RAND() LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
   AND pending=false AND closed=false AND gpu=true
@@ -123,7 +123,7 @@ WHERE "number" IN
     (
      SELECT "number" FROM "job" 
      WHERE pending=false AND closed=false AND gpu=false 
-     ORDER BY "number" ASC LIMIT 1
+     ORDER BY RAND() LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
   AND pending=false AND closed=false AND gpu=false
