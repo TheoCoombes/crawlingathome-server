@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as new_name
 from random import choice
+from requests import get
 from uuid import uuid4
 from time import time
 import aiofiles
@@ -365,6 +366,16 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 async def isCompleted(inp: IsCompleteInput):
     jobs = await Job.filter(gpu_url__in=inp.addresses, closed=True)
     return [job.gpu_url for job in jobs]
+
+@app.get('/api/shouldSwitchType', response_class=PlainTextResponse)
+async def shouldSwitchType(type: str):
+    r = get("http://5.9.55.230:8080/disk").json()
+    if r["utilization"] >= 0.9 and type == "CPU":
+        return "HYBRID"
+    elif r["utilization"] < 0.8 and type == "HYBRID":
+        return "CPU"
+    else:
+        return type
 
 
 # API START ------
