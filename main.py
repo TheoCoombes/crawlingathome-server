@@ -315,10 +315,13 @@ async def set_banner(password: str, text: str):
         return "invalid auth"
 
     
-@app.get('/custom/get-cpu-wat')
+@app.get('/custom/get-cpu-wat', response_class=PlainTextResponse)
 async def get_cpu_wat():
-    wat = await Job.filter(closed=False, pending=False, gpu=False)
-    return choice(wat).url
+    async with in_transaction() as conn:
+        url = await conn.execute_query(
+            """SELECT "url" FROM "job" WHERE closed=false AND pending=false AND gpu=false ORDER BY RANDOM() LIMIT 1;"""
+        )
+    return url
     
 
 @app.post('/custom/lookup-wat')
