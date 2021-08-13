@@ -321,8 +321,7 @@ async def get_cpu_wat():
         data = await conn.execute_query_dict(
             """SELECT "url" FROM "job" WHERE closed=false AND pending=false AND gpu=false ORDER BY RANDOM() LIMIT 1;"""
         )
-    print(data)
-    return data[0]
+    return data[0]["url"]
     
 
 @app.post('/custom/lookup-wat')
