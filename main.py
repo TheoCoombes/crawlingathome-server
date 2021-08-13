@@ -354,7 +354,7 @@ async def custom_markasdone(inp: MarkAsDoneCPUInput):
     for job in jobs:
         job.cpu_completor = inp.nickname
         job.gpu = True
-        job.gpu_url = urls[str(job.number)]
+        job.gpu_url = inp.urls[str(job.number)]
         await job.save()
     
     if existed > 0:
