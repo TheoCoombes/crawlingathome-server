@@ -318,9 +318,10 @@ async def set_banner(password: str, text: str):
 @app.get('/custom/get-cpu-wat', response_class=PlainTextResponse)
 async def get_cpu_wat():
     async with in_transaction() as conn:
-        data = await conn.execute_query(
+        data = await conn.execute_query_dict(
             """SELECT "url" FROM "job" WHERE closed=false AND pending=false AND gpu=false ORDER BY RANDOM() LIMIT 1;"""
         )
+    print(data)
     return data[0]
     
 
