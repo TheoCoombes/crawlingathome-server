@@ -33,6 +33,8 @@
         <strong>Latest Progress Update:</strong> "{{ c.progress }}"
         <br><br>
         <strong>Total Shards Completed:</strong> {{ '{:,}'.format(c.jobs_completed) }}
+        <br><br>
+        <strong>Efficiency:</strong> {{ '{0:.2f}'.format(((c.last_seen - c.first_seen) / c.jobs_completed) / 3600) }} shards per hour
         <br><br><br>
 	    <a href="/worker/{{ c.type.lower() }}/{{ c.display_name }}/data">JSON Format</a>
 	    <br><br>
