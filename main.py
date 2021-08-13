@@ -397,7 +397,15 @@ async def custom_markasdone(inp: MarkAsDoneInput):
 @app.post('/api/isCompleted')
 async def isCompleted(inp: IsCompleteInput):
     jobs = await Job.filter(gpu_url__in=inp.addresses, closed=True)
-    return [job.gpu_url for job in jobs]
+    closeds = [job.gpu_url for job in jobs]
+    
+    for addr in inp.addresses:
+        if addr in closeds:
+            continue
+        elif not await Job.exists(gpu_url=addr):
+            closeds.append(addr)
+            
+    return closeds
 
 
 # API START ------
