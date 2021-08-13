@@ -348,8 +348,8 @@ async def lookup_wat(inp: LookupWatInput):
     
 @app.post('/custom/markasdone-cpu')
 async def custom_markasdone(inp: MarkAsDoneCPUInput):
-    existed = await Job.filter(number__in=inp.shards, closed=False, pending=False).count()
-    jobs = await Job.filter(number__in=inp.shards, closed=False, pending=False)
+    existed = await Job.filter(number__in=inp.shards, closed=False, pending=False, gpu=False).count()
+    jobs = await Job.filter(number__in=inp.shards, closed=False, pending=False, gpu=False)
     
     for job in jobs:
         job.cpu_completor = inp.nickname
