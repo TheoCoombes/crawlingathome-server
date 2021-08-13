@@ -56,13 +56,17 @@ class BanShardCountInput(BaseModel):
     count: int
 
 class LookupWatInput(BaseModel):
-    password: str
     url: str
 
 class MarkAsDoneInput(BaseModel):
     password: str
     shards: list
     count: int
+    nickname: str
+
+class MarkAsDoneCPUInput(BaseModel):
+    shards: list
+    urls: dict
     nickname: str
 
 class IsCompleteInput(BaseModel):
@@ -311,11 +315,14 @@ async def set_banner(password: str, text: str):
         return "invalid auth"
 
     
+@app.get('/custom/get-cpu-wat')
+async def get_cpu_wat():
+    wat = await Job.filter(closed=False, pending=False, gpu=False)
+    return choice(wat).url
+    
+
 @app.post('/custom/lookup-wat')
 async def lookup_wat(inp: LookupWatInput):
-    if inp.password != ADMIN_PASSWORD:
-        return {"status": "failed", "detail": "Invalid password."}
-    
     body = []
     
     shards = await Job.filter(closed=False, pending=False, gpu=False, url=inp.url)
@@ -330,10 +337,36 @@ async def lookup_wat(inp: LookupWatInput):
             }
         ])
     
-    if len(body) == 0:
-        return {"status": "failed", "detail": "All shards have already been completed by another worker."}
+    if len(body) < 2:
+        return {"status": "failed", "detail": "All/some shards have already been completed by another worker."}
     else:
         return {"status": "success", "shards": body}
+    
+    
+@app.post('/custom/markasdone-cpu')
+async def custom_markasdone(inp: MarkAsDoneCPUInput):
+    existed = await Job.filter(number__in=inp.shards, closed=False, pending=False).count()
+    jobs = await Job.filter(number__in=inp.shards, closed=False, pending=False)
+    
+    for job in jobs:
+        job.cpu_completor = inp.nickname
+        job.gpu = True
+        job.gpu_url = urls[str(job.number)]
+        await job.save()
+    
+    if existed > 0:
+        user, created = await CPU_Leaderboard.get_or_create(nickname=inp.nickname)
+        
+        if created:
+            user.jobs_completed = existed
+        else:
+            user.jobs_completed += existed
+        
+        await user.save()
+ 
+        return {"status": "success", "completed": existed}
+    else:
+        return {"status": "failed", "detail": "All shards have already been completed by another worker."}
     
     
 @app.post('/custom/markasdone')
