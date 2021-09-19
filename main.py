@@ -68,6 +68,7 @@ class MarkAsDoneCPUInput(BaseModel):
     shards: list
     urls: dict
     nickname: str
+    token: Optional[str] = None
 
 class IsCompleteInput(BaseModel):
     addresses: list
@@ -358,6 +359,13 @@ async def custom_markasdone(inp: MarkAsDoneCPUInput):
         await job.save()
     
     if existed > 0:
+        if inp.token:
+            client = await Client.get(token=token)
+            client.jobs_completed += existed
+            client.last_seen = int(time())
+            await client.save()
+            
+        
         user, created = await CPU_Leaderboard.get_or_create(nickname=inp.nickname)
         
         if created:
