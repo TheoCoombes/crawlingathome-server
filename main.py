@@ -360,12 +360,14 @@ async def custom_markasdone(inp: MarkAsDoneCPUInput):
     
     if existed > 0:
         if inp.token:
-            client = await Client.get(token=token)
-            client.jobs_completed += existed
-            client.last_seen = int(time())
-            await client.save()
+            try:
+                client = await Client.get(token=token)
+                client.jobs_completed += existed
+                client.last_seen = int(time())
+                await client.save()
+            except Exception:
+                pass
             
-        
         user, created = await CPU_Leaderboard.get_or_create(nickname=inp.nickname)
         
         if created:
