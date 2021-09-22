@@ -25,7 +25,7 @@ app = FastAPI()
 cache = Cache(REDIS_CONN_URL)
 templates = Jinja2Templates(directory="templates")
 
-types = ["HYBRID", "CPU", "GPU"]
+types = ["CSV", "CPU", "GPU"]
 
 
 # REQUEST INPUTS START ------
@@ -33,16 +33,16 @@ types = ["HYBRID", "CPU", "GPU"]
 
 class TokenInput(BaseModel):
     token: str
-    type: Optional[str] = "HYBRID"
+    type: str
 
 class TokenProgressInput(BaseModel):
     token: str
     progress: str
-    type: Optional[str] = "HYBRID"
+    type: str
 
 class TokenCountInput(BaseModel): # For marking as done
     token: str
-    type: Optional[str] = "HYBRID"
+    type: str
         
     count: Optional[int] = None  # `count` is for HYBRID/GPU
     
@@ -98,15 +98,15 @@ async def index(request: Request, all: Optional[bool] = False):
     banner = await cache.client.get("banner")
 
     if not all:
-        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen").limit(50)
+        csv_clients = await Client.filter(type="CSV").prefetch_related("shard").order_by("first_seen").limit(50)
         cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen").limit(50)
         gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen").limit(50)
     else:
-        hybrid_clients = await Client.filter(type="HYBRID").prefetch_related("shard").order_by("first_seen")
+        csv_clients = await Client.filter(type="CSV").prefetch_related("shard").order_by("first_seen")
         cpu_clients = await Client.filter(type="CPU").prefetch_related("shard").order_by("first_seen")
         gpu_clients = await Client.filter(type="GPU").prefetch_related("shard").order_by("first_seen")
     
-    len_hybrid = await Client.filter(type="HYBRID").count()
+    len_csv = await Client.filter(type="CSV").count()
     len_cpu = await Client.filter(type="CPU").count()
     len_gpu = await Client.filter(type="GPU").count()
         
@@ -114,10 +114,10 @@ async def index(request: Request, all: Optional[bool] = False):
         "request": request,
         "all": all,
         "banner": banner,
-        "hybrid_clients": hybrid_clients,
+        "csv_clients": csv_clients,
         "cpu_clients": cpu_clients,
         "gpu_clients": gpu_clients,
-        "len_hybrid": len_hybrid,
+        "len_csv": len_csv,
         "len_cpu": len_cpu,
         "len_gpu": len_gpu,
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
@@ -425,8 +425,10 @@ async def isCompleted(inp: IsCompleteInput):
 
 
 @app.get('/api/new')
-async def new(nickname: str, type: Optional[str] = "HYBRID"):
+async def new(nickname: str, type: str):
     if type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     uuid = str(uuid4())
@@ -456,6 +458,8 @@ async def new(nickname: str, type: Optional[str] = "HYBRID"):
 @app.post('/api/validateWorker', response_class=PlainTextResponse)
 async def validateWorker(inp: TokenInput):
     if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     exists = await Client.exists(uuid=inp.token, type=inp.type)
@@ -464,7 +468,7 @@ async def validateWorker(inp: TokenInput):
 
 
 @app.get('/api/getUploadAddress', response_class=PlainTextResponse)
-async def getUploadAddress(type: Optional[str] = "HYBRID"):
+async def getUploadAddress(type: str):
     if type == "CPU":
         return choice(UPLOAD_CPU_ADDRS)
     else:
@@ -474,6 +478,8 @@ async def getUploadAddress(type: Optional[str] = "HYBRID"):
 @app.post('/api/newJob')
 async def newJob(inp: TokenInput):
     if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
@@ -511,6 +517,7 @@ async def newJob(inp: TokenInput):
         
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
     else:
+        # TODO csv, cpu workers seperately
         try:
             # Empty out any existing jobs that may cause errors.
             await Job.filter(completor=client.uuid, pending=True).update(completor=None, pending=False)
@@ -538,13 +545,16 @@ async def newJob(inp: TokenInput):
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
-async def jobCount(type: Optional[str] = "HYBRID"):
+async def jobCount(type: Optional[str] = "CPU"):
     if type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
         
     if type == "GPU":
         count = await Job.filter(pending=False, closed=False, gpu=True).count()
     else:
+        # TODO csv and cpu seperately
         count = await Job.filter(pending=False, closed=False, gpu=False).count()
     
     return str(count)
@@ -553,6 +563,8 @@ async def jobCount(type: Optional[str] = "HYBRID"):
 @app.post('/api/updateProgress', response_class=PlainTextResponse)
 async def updateProgress(inp: TokenProgressInput):
     if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
@@ -566,6 +578,8 @@ async def updateProgress(inp: TokenProgressInput):
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
 async def markAsDone(inp: TokenCountInput):
     if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
@@ -578,6 +592,7 @@ async def markAsDone(inp: TokenCountInput):
     if client.shard.closed:
         raise HTTPException(status_code=403, detail="This job has already been marked as completed!")
     
+    # TODO csv
     if inp.type == "CPU":
         if inp.url is None:
             raise HTTPException(status_code=400, detail="The worker did not submit valid download data.")
@@ -632,10 +647,13 @@ async def markAsDone(inp: TokenCountInput):
 
         return "success"
 
+# TODO csv invalid download method
 
 @app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
 async def gpuInvalidDownload(inp: TokenInput):
     if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
     
     try:
@@ -661,9 +679,6 @@ async def gpuInvalidDownload(inp: TokenInput):
     
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
-    if inp.type not in types:
-        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
     except:
