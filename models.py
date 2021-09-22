@@ -23,6 +23,10 @@ class Job(Model):
     # The shard of the chunk: 0 = first 50%, 1 = last 50%.
     shard_of_chunk = fields.IntField()
     
+    # CSV information (not always used)
+    csv = fields.BooleanField()
+    csv_url = fields.CharField(max_length=500, null=True)
+    
     # GPU job information (not always used)
     gpu = fields.BooleanField()
     gpu_url = fields.CharField(max_length=500, null=True)
@@ -33,6 +37,7 @@ class Job(Model):
     
     # User data
     completor = fields.CharField(max_length=255, null=True) # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
+    csv_completor = fields.CharField(max_length=255, null=True) # (contains the CSV worker's user nickname on completion if this shard was also processed using a CSV worker)
     cpu_completor = fields.CharField(max_length=255, null=True) # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
 
     
