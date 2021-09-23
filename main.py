@@ -516,8 +516,8 @@ async def newJob(inp: TokenInput):
         await client.save()
         
         return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
-    else:
-        # TODO csv, cpu workers seperately
+    elif inp.type == "CPU":
+        # TODO models.py new string formats
         try:
             # Empty out any existing jobs that may cause errors.
             await Job.filter(completor=client.uuid, pending=True).update(completor=None, pending=False)
@@ -527,7 +527,7 @@ async def newJob(inp: TokenInput):
             # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
             async with in_transaction() as conn:
                 await conn.execute_query(
-                    CUSTOM_QUERY_CPU_HYBRID.format(client.uuid)
+                    CUSTOM_QUERY_CPU.format(client.uuid)
                 )
             job = await Job.get(completor=client.uuid, pending=True)
         except:
@@ -539,7 +539,33 @@ async def newJob(inp: TokenInput):
         client.shard = job
         client.progress = "Recieved new job"
         client.last_seen = int(time())
-        await client.save()      
+        await client.save()
+        
+        return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
+    else:
+        # assume type == "CSV"
+        try:
+            # Empty out any existing jobs that may cause errors.
+            await Job.filter(completor=client.uuid, pending=True).update(completor=None, pending=False)
+            
+            # We update with completor to be able to find the job and make it pending in a single request, and we later set it back to None.
+            # This helps us avoid workers getting assigned the same job.
+            # We also had to use a raw SQL query here, as tortoise-orm was not complex enough to allow us to perform this type of command.
+            async with in_transaction() as conn:
+                await conn.execute_query(
+                    CUSTOM_QUERY_CSV.format(client.uuid)
+                )
+            job = await Job.get(completor=client.uuid, pending=True)
+        except:
+            raise HTTPException(status_code=403, detail="Either there are no more jobs available, or an error occurred whilst finding a job.")
+        
+        job.completor = None
+        await job.save()
+        
+        client.shard = job
+        client.progress = "Recieved new job"
+        client.last_seen = int(time())
+        await client.save()
         
         return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "shard": job.shard_of_chunk, "number": job.number}
 
