@@ -673,6 +673,32 @@ async def markAsDone(inp: TokenCountInput):
         await user.save()
 
         return "success"
+    else:
+        if not inp.count:
+            raise HTTPException(status_code=400, detail="The worker did not submit a valid count!")
+        
+        client.shard.closed = True
+        client.shard.pending = False
+        client.shard.completor = client.user_nickname
+        await client.shard.save()
+        
+        client.shard = None
+        client.progress = "Completed Job"
+        client.jobs_completed += 1
+        client.last_seen = int(time())
+        await client.save()
+
+        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
+        if created:
+            user.jobs_completed = 1
+            user.pairs_scraped = inp.count
+        else:
+            user.jobs_completed += 1
+            user.pairs_scraped += inp.count
+        
+        await user.save()
+
+        return "success"
 
 # TODO csv invalid download method
 
