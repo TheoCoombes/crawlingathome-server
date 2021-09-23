@@ -619,7 +619,6 @@ async def markAsDone(inp: TokenCountInput):
     if client.shard.closed:
         raise HTTPException(status_code=403, detail="This job has already been marked as completed!")
     
-    # TODO csv
     if inp.type == "CPU":
         if inp.url is None:
             raise HTTPException(status_code=400, detail="The worker did not submit valid download data.")
@@ -674,12 +673,15 @@ async def markAsDone(inp: TokenCountInput):
 
         return "success"
     else:
-        if not inp.count:
-            raise HTTPException(status_code=400, detail="The worker did not submit a valid count!")
+        # TODO CSV leaderboard
         
-        client.shard.closed = True
+        if inp.url is None:
+            raise HTTPException(status_code=400, detail="The worker did not submit valid download data.")
+        
+        client.shard.csv = True
         client.shard.pending = False
-        client.shard.completor = client.user_nickname
+        client.shard.csv_url = inp.url
+        client.shard.csv_completor = client.user_nickname
         await client.shard.save()
         
         client.shard = None
@@ -688,19 +690,18 @@ async def markAsDone(inp: TokenCountInput):
         client.last_seen = int(time())
         await client.save()
 
-        user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
+        user, created = await CSV_Leaderboard.get_or_create(nickname=client.user_nickname)
         if created:
             user.jobs_completed = 1
-            user.pairs_scraped = inp.count
         else:
             user.jobs_completed += 1
-            user.pairs_scraped += inp.count
-        
+            
         await user.save()
-
+        
+        # completion + completion_str are not affected by CSV jobs.
+        
         return "success"
 
-# TODO csv invalid download method
 
 @app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
 async def gpuInvalidDownload(inp: TokenInput):
@@ -721,6 +722,34 @@ async def gpuInvalidDownload(inp: TokenInput):
     client.shard.gpu = False
     client.shard.pending = False
     client.shard.cpu_completor = None
+    await client.shard.save()
+    
+    client.shard = None
+    client.last_seen = int(time())
+    await client.save()
+    
+    return "success"
+
+
+@app.post('/api/csvInvalidDownload', response_class=PlainTextResponse)
+async def csvInvalidDownload(inp: TokenInput):
+    if inp.type not in types:
+        if type == "HYBRID":
+            raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported. For info about setting up a CPU worker, ask in #general at the Crawling@Home section of the DALL-E PyTorch discord server. (https://discord.gg/GU36S8RA3r)")
+        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+    
+    try:
+        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+    except:
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
+    
+    if client.shard is None:
+        raise HTTPException(status_code=403, detail="This worker is not currently working on a job.")
+    
+    client.shard.csv_url = None
+    client.shard.csv = False
+    client.shard.pending = False
+    client.shard.csv_completor = None
     await client.shard.save()
     
     client.shard = None
