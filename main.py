@@ -579,9 +579,10 @@ async def jobCount(type: Optional[str] = "CPU"):
         
     if type == "GPU":
         count = await Job.filter(pending=False, closed=False, gpu=True).count()
-    else:
-        # TODO csv and cpu seperately
+    elif type == "CPU":
         count = await Job.filter(pending=False, closed=False, gpu=False).count()
+    else:
+        count = await Job.filter(pending=False, closed=False, gpu=False, csv=False).count()
     
     return str(count)
 
