@@ -103,8 +103,18 @@ class CPU_Leaderboard(Model):
     
     # Data about the user.
     jobs_completed = fields.IntField(default=0)
+ 
 
+class CSV_Leaderboard(Model):
+    """ The CSV job completion leaderboard. """
     
+    # The user's nickname
+    nickname = fields.CharField(max_length=255, pk=True)
+    
+    # Data about the user.
+    jobs_completed = fields.IntField(default=0)
+
+
 # CUSTOM SQL QUERIES:
 
 CUSTOM_QUERY_GPU = """
@@ -121,13 +131,13 @@ WHERE "number" IN
 ;
 """
 
-CUSTOM_QUERY_CPU_HYBRID = """
+CUSTOM_QUERY_CPU = """
 UPDATE "job" 
 SET pending=true, completor='{}' 
 WHERE "number" IN 
     (
      SELECT "number" FROM "job" 
-     WHERE pending=false AND closed=false AND gpu=false 
+     WHERE pending=false AND closed=false AND gpu=false
      ORDER BY RANDOM() LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
