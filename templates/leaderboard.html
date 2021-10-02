@@ -14,31 +14,31 @@
         {% endif %}
         <h1>Crawling@Home Dashboard</h1>
         <br><br>
-        <h2>Hybrid/GPU Leaderboard</h2>
+        
+        <h2>CSV Leaderboard</h2>
         <br>
-        {% if (leaderboard | length) != 0 %}
+        {% if (csv_leaderboard | length) != 0 %}
             <table class="table">
                 <thead>
                     <tr>
                         <th scope="col">Nickname</th>
                         <th scope="col">Jobs Completed</th>
-                        <th scope="col">Image-Text Pairs Scraped (before de-dupe)</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in leaderboard %}
+                    {% for user in csv_leaderboard %}
                         <tr>
                             <th scope="row">{{ user.nickname }}</th>
                             <td>{{ "{:,}".format(user.jobs_completed) }}</td>
-			                <td>{{ "{:,}".format(user.pairs_scraped) }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <p>There are no people on the Hybrid/GPU leaderboard - <a href="/install">be the first</a>.</p>
+            <p>There are no people on the CSV leaderboard - <a href="/install">be the first</a>.</p>
         {% endif %}
         <br>
+        
         <h2>CPU Leaderboard</h2>
         <br>
         {% if (cpu_leaderboard | length) != 0 %}
@@ -61,6 +61,35 @@
         {% else %}
             <p>There are no people on the CPU leaderboard - <a href="/install">be the first</a>.</p>
         {% endif %}
+        <br>
+        
+        <h2>GPU Leaderboard</h2>
+        <br>
+        {% if (gpu_leaderboard | length) != 0 %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nickname</th>
+                        <th scope="col">Jobs Completed</th>
+                        <th scope="col">Image-Text Pairs Scraped (before de-dupe)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in gpu_leaderboard %}
+                        <tr>
+                            <th scope="row">{{ user.nickname }}</th>
+                            <td>{{ "{:,}".format(user.jobs_completed) }}</td>
+			                <td>{{ "{:,}".format(user.pairs_scraped) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>There are no people on the GPU leaderboard - <a href="/install">be the first</a>.</p>
+        {% endif %}
+        <br>
+        
+        
         <br><br>
         <a href="/">Back</a>
         <br><br>
