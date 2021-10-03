@@ -138,7 +138,7 @@ WHERE "number" IN
     (
      SELECT "number" FROM "job" 
      WHERE pending=false AND closed=false AND gpu=false
-     ORDER BY (CASE WHEN csv=true THEN -1 ELSE RANDOM() END) ASC
+     ORDER BY (CASE WHEN csv=true THEN -RANDOM() ELSE RANDOM() END) ASC
      LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
