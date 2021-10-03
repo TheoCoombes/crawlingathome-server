@@ -84,8 +84,8 @@ class Client(Model):
 
 
 
-class Leaderboard(Model):
-    """ The Hybrid/GPU job completion leaderboard. """
+class GPU_Leaderboard(Model):
+    """ The GPU job completion leaderboard. """
     
     # The user's nickname
     nickname = fields.CharField(max_length=255, pk=True)
@@ -132,15 +132,30 @@ WHERE "number" IN
 """
 
 CUSTOM_QUERY_CPU = """
+UPDATE "job"
+SET pending=true, completor='{}'
+WHERE "number" IN 
+    (
+     SELECT "number" FROM "job" 
+     WHERE pending=false AND closed=false AND gpu=false
+     ORDER BY (CASE WHEN csv=true THEN -1 ELSE RANDOM() END) ASC
+     LIMIT 1
+     FOR UPDATE SKIP LOCKED
+    )
+  AND pending=false AND closed=false AND gpu=false
+;
+"""
+
+CUSTOM_QUERY_CSV = """
 UPDATE "job" 
 SET pending=true, completor='{}' 
 WHERE "number" IN 
     (
      SELECT "number" FROM "job" 
-     WHERE pending=false AND closed=false AND gpu=false
+     WHERE pending=false AND closed=false AND gpu=false AND csv=false
      ORDER BY RANDOM() LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
-  AND pending=false AND closed=false AND gpu=false
+  AND pending=false AND closed=false AND gpu=false AND csv=false
 ;
 """
