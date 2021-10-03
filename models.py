@@ -124,7 +124,8 @@ WHERE "number" IN
     (
      SELECT "number" FROM "job" 
      WHERE pending=false AND closed=false AND gpu=true 
-     ORDER BY RANDOM() LIMIT 1
+     ORDER BY RANDOM()
+     LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
   AND pending=false AND closed=false AND gpu=true
@@ -153,7 +154,8 @@ WHERE "number" IN
     (
      SELECT "number" FROM "job" 
      WHERE pending=false AND closed=false AND gpu=false AND csv=false
-     ORDER BY RANDOM() LIMIT 1
+     ORDER BY RANDOM()
+     LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
   AND pending=false AND closed=false AND gpu=false AND csv=false
