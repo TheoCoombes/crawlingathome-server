@@ -18,7 +18,7 @@ pip install -r requirements.txt
    - Configure your Redis connection url in `config.py`.
 3. Setup SQL database
    - [PostGreSQL Guide](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-postgresql-on-ubuntu-20-04) - follow steps 1-4, naming your database `crawlingathome`.
-   - Install the required python library for the database you are using. (see link above)
+   - Install the required [tortoise-orm driver](https://tortoise-orm.readthedocs.io/en/latest/#pluggable-database-backends) for your db, in this case `pip install asyncpg`.
    - Configure your SQL connection url in `config.py`.
    - In the `crawlingathome-server` folder, create a new folder named 'jobs', and download [this file](https://drive.google.com/file/d/1YiKlmisVJf1ngJv1weRFEaZrt74FSCbH/view?usp=sharing) there.
    - Also create two files there, named `closed.json`, `open_gpu.json` with the text `[]` stored in both.
