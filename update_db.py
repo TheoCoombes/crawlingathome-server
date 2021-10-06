@@ -69,7 +69,7 @@ async def init():
     print("Bulk creating jobs in database... (this may take a while)")
     await Job.bulk_create(jobs)
     
-    del db, opened, closed, gpu_data, jobs
+    del db, opened
     gc.collect()
     
     
