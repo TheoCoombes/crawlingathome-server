@@ -19,9 +19,6 @@ class Job(Model):
     # The starting and ending sample IDs for this entire chunk (= 2 shards)
     start_id = fields.CharField(max_length=255)
     end_id = fields.CharField(max_length=255)
-
-    # The shard of the chunk: 0 = first 50%, 1 = last 50%.
-    shard_of_chunk = fields.IntField()
     
     # CSV information (not always used)
     csv = fields.BooleanField()
