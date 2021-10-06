@@ -28,8 +28,7 @@ async def init():
     directory = "https://commoncrawl.s3.amazonaws.com/"
     with open("jobs/original.json", "r") as f:
         db = json.load(f)
-    with open("jobs/open.json", "r") as f:
-        opened = [_calculate_shard_number(i) for i in db] 
+    opened = [_calculate_shard_number(i) for i in db] 
     
     jobs = []
     
