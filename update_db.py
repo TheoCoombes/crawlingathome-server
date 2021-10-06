@@ -10,10 +10,7 @@ import gc
 # You need your SQL database set up, and configured in config.py
 
 def _calculate_shard_number(job):
-    count = (np.int64(job["end_id"]) / 1000000) * 2
-    if job["shard"] == 0:
-        count -= 1
-    return int(count)
+    return int(np.int64(job["end_id"]) / 1000000)
 
 async def init():
     # 0. Connect to DB
@@ -28,16 +25,11 @@ async def init():
     
     # 1. Jobs
     print("Processing jobs... (this may take a while)")
-    with open("jobs/shard_info.json", "r") as f:
-        directory = json.load(f)["directory"]
+    directory = "https://commoncrawl.s3.amazonaws.com/"
     with open("jobs/original.json", "r") as f:
         db = json.load(f)
     with open("jobs/open.json", "r") as f:
-        opened = [_calculate_shard_number(i) for i in json.load(f)] 
-    with open("jobs/closed.json", "r") as f:
-        closed = [int(i) for i in json.load(f)]
-    with open("jobs/open_gpu.json", "r") as f:
-        gpu_data = json.load(f)
+        opened = [_calculate_shard_number(i) for i in db] 
     
     jobs = []
     
@@ -48,61 +40,18 @@ async def init():
             url=directory + data["url"],
             start_id=data["start_id"],
             end_id=data["end_id"],
-            shard_of_chunk=data["shard"],
+            csv=False,
+            csv_url=None,
             gpu=False,
             gpu_url=None,
             pending=False,
             closed=False,
             completor=None,
-            cpu_completor=None
+            cpu_completor=None,
+            csv_completor=None
         )
         
         jobs.append(job)
-    
-    for i in closed:
-        data = db[i-1]
-        job = Job(
-            number=i,
-            url=directory + data["url"],
-            start_id=data["start_id"],
-            end_id=data["end_id"],
-            shard_of_chunk=data["shard"],
-            gpu=False,
-            gpu_url=None,
-            pending=False,
-            closed=True,
-            completor="N/A",
-            cpu_completor=None
-        )
-        
-        jobs.append(job)
-    
-    for data in gpu_data:
-        number = int(data[0])
-        job = Job(
-            number=number,
-            url=directory + db[number-1]["url"],
-            start_id=data[1]["start_id"],
-            end_id=data[1]["end_id"],
-            shard_of_chunk=data[1]["shard"],
-            gpu=True,
-            gpu_url=data[1]["url"],
-            pending=False,
-            closed=False,
-            completor=None,
-            cpu_completor="N/A"
-        )
-        
-        jobs.append(job)
-    
-    # Dedupe
-    seen = set()
-    new_jobs = []
-    for job in jobs:
-        if job.number not in seen:
-            new_jobs.append(job)
-            seen.add(job.number)
-    jobs = new_jobs
     
     jobs = sorted(jobs, key=lambda x: x.number) # Sort
     
@@ -113,32 +62,6 @@ async def init():
     del db, opened, closed, gpu_data, jobs
     gc.collect()
     
-    
-    # 2. Leaderboard
-    print("Processing leaderboard...")
-    with open("jobs/leaderboard.json", "r") as f:
-        lb = json.load(f)
-    
-    leaderboard = []
-    
-    for user in lb:
-        userboard = Leaderboard(
-            nickname=user,
-            jobs_completed=lb[user][0],
-            pairs_scraped=lb[user][1]
-        )
-        
-        leaderboard.append(userboard)
-    
-    print("Bulk creating leaderboard in database... (this may take a while)")
-    await Leaderboard.bulk_create(leaderboard)
-    
-    del lb, leaderboard
-    gc.collect()
-    
-    
-    # We don't need to do Client as they are volatile
-    # We don't need to do CPU_Leaderboard as it did not exist before v3.0.0
     
     print("Done.")
 
