@@ -60,15 +60,6 @@ async def init():
         
         jobs.append(job)
     
-    # Dedupe
-    seen = set()
-    new_jobs = []
-    for job in jobs:
-        if job.number not in seen:
-            new_jobs.append(job)
-            seen.add(job.number)
-    jobs = new_jobs
-    
     jobs = sorted(jobs, key=lambda x: x.number) # Sort
     for i, job in enumerate(jobs, 1):
         job.number = i
