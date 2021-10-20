@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from name import new as new_name
 from random import choice
+from requests import get
 from uuid import uuid4
 from time import time
 import aiofiles
@@ -109,6 +110,17 @@ async def index(request: Request, all: Optional[bool] = False):
     len_hybrid = await Client.filter(type="HYBRID").count()
     len_cpu = await Client.filter(type="CPU").count()
     len_gpu = await Client.filter(type="GPU").count()
+    
+    
+    total_pairs = await cache.client.get("pairs")
+    if not total_pairs:
+        total_pairs = "N/A"
+    else:
+        try:
+            total_pairs = int(total_pairs)
+        except ValueError:
+            total_pairs = total_pairs.decode()
+        
         
     body = templates.TemplateResponse('index.html', {
         "request": request,
@@ -122,7 +134,7 @@ async def index(request: Request, all: Optional[bool] = False):
         "len_gpu": len_gpu,
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
-        "total_pairs": sum([i.pairs_scraped for i in await Leaderboard.all()]),
+        "total_pairs": total_pairs,
         "eta": (await cache.client.get("eta")).decode()
     })
 
@@ -356,6 +368,9 @@ async def custom_markasdone(inp: MarkAsDoneCPUInput):
         job.cpu_completor = inp.nickname
         job.gpu = True
         job.gpu_url = inp.urls[str(job.number)]
+        if "postgres" in job.gpu_url:
+            job.gpu = False
+            gob.closed = True
         await job.save()
     
     if existed > 0:
@@ -586,6 +601,9 @@ async def markAsDone(inp: TokenCountInput):
         client.shard.pending = False
         client.shard.gpu_url = inp.url
         client.shard.cpu_completor = client.user_nickname
+        if "postgres" in client.shard.gpu_url:
+            client.shard.gpu = False
+            client.shard.closed = True
         await client.shard.save()
         
         client.shard = None
@@ -742,7 +760,15 @@ async def calculate_eta():
             await cache.client.set("eta", _format_time(length))
         else:
             await cache.client.set("eta", "Finished")
-        
+
+
+async def update_pairs_count():
+    while True:
+        jsn = get("http://116.202.162.146:8000/info/?key=main").json()
+        pairs = jsn.get("Number of items inserted", "N/A")
+        await cache.client.set("pairs", pairs)
+        await asyncio.sleep(25)
+
 
 # FASTAPI UTILITIES START ------ 
     
@@ -756,6 +782,7 @@ async def app_startup():
         # The following functions only need to be executed on a single worker.
         asyncio.create_task(check_idle())
         asyncio.create_task(calculate_eta())
+        asyncio.create_task(update_pairs_count())
 
 
 @app.on_event('shutdown')
