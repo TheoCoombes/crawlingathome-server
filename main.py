@@ -212,13 +212,24 @@ async def data():
         # Cache hasn't yet been set, we need to render the page body.
         pass
     
+    
+    total_pairs = await cache.client.get("pairs")
+    if not total_pairs:
+        total_pairs = "N/A"
+    else:
+        try:
+            total_pairs = int(total_pairs)
+        except ValueError:
+            total_pairs = total_pairs.decode()
+    
+    
     completed = await Job.filter(closed=True).count()
     total = await Job.all().count()
     body = {
         "completion_str": f"{completed:,} / {total:,}",
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "total_connected_workers": await Client.all().count(),
-        "total_pairs_scraped": sum([i.pairs_scraped for i in await Leaderboard.all()]),
+        "total_pairs_scraped": total_pairs,
         "eta": (await cache.client.get("eta")).decode()
     }
     
