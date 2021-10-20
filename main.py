@@ -370,7 +370,7 @@ async def custom_markasdone(inp: MarkAsDoneCPUInput):
         job.gpu_url = inp.urls[str(job.number)]
         if "postgres" in job.gpu_url:
             job.gpu = False
-            gob.closed = True
+            job.closed = True
         await job.save()
     
     if existed > 0:
