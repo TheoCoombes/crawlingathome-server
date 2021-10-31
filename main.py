@@ -454,6 +454,8 @@ async def isCompleted(inp: IsCompleteInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+    if inp.type == "HYBRID":
+        raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported - consider creating a CPU worker instead.")
     
     uuid = str(uuid4())
     ctime = int(time())
@@ -501,6 +503,8 @@ async def getUploadAddress(type: Optional[str] = "HYBRID"):
 async def newJob(inp: TokenInput):
     if inp.type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
+    if inp.type == "HYBRID":
+        raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported - consider creating a CPU worker instead.")
     
     try:
         client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
