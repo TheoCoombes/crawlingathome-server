@@ -454,7 +454,7 @@ async def isCompleted(inp: IsCompleteInput):
 async def new(nickname: str, type: Optional[str] = "HYBRID"):
     if type not in types:
         raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    if inp.type == "HYBRID":
+    if type == "HYBRID":
         raise HTTPException(status_code=403, detail="Hybrid workers are no longer supported - consider creating a CPU worker instead.")
     
     uuid = str(uuid4())
