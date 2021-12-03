@@ -111,8 +111,9 @@ async def index(request: Request, all: Optional[bool] = False):
     len_cpu = await Client.filter(type="CPU").count()
     len_gpu = await Client.filter(type="GPU").count()
     
-    
     total_pairs = await cache.client.get("pairs")
+    total_ml_pairs = await cache.client.get("ml-pairs")
+    
     if not total_pairs:
         total_pairs = "N/A"
     else:
@@ -120,6 +121,14 @@ async def index(request: Request, all: Optional[bool] = False):
             total_pairs = int(total_pairs)
         except ValueError:
             total_pairs = total_pairs.decode()
+    
+    if not total_ml_pairs:
+        total_ml_pairs = "N/A"
+    else:
+        try:
+            total_ml_pairs = int(total_ml_pairs)
+        except ValueError:
+            total_ml_pairs = total_ml_pairs.decode()
         
         
     body = templates.TemplateResponse('index.html', {
@@ -135,6 +144,7 @@ async def index(request: Request, all: Optional[bool] = False):
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": total_pairs,
+        "total_multilanguage_pairs": total_ml_pairs,
         "eta": (await cache.client.get("eta")).decode()
     })
 
@@ -214,6 +224,8 @@ async def data():
     
     
     total_pairs = await cache.client.get("pairs")
+    total_ml_pairs = await cache.client.get("ml-pairs")
+    
     if not total_pairs:
         total_pairs = "N/A"
     else:
@@ -221,6 +233,14 @@ async def data():
             total_pairs = int(total_pairs)
         except ValueError:
             total_pairs = total_pairs.decode()
+    
+    if not total_ml_pairs:
+        total_ml_pairs = "N/A"
+    else:
+        try:
+            total_ml_pairs = int(total_ml_pairs)
+        except ValueError:
+            total_ml_pairs = total_ml_pairs.decode()
     
     
     completed = await Job.filter(closed=True).count()
@@ -230,6 +250,7 @@ async def data():
         "completion_float": (completed / total) * 100 if total > 0 else 100.0,
         "total_connected_workers": await Client.all().count(),
         "total_pairs_scraped": total_pairs,
+        "total_multilanguage_pairs_scraped": total_ml_pairs,
         "eta": (await cache.client.get("eta")).decode()
     }
     
@@ -782,6 +803,11 @@ async def update_pairs_count():
         jsn = get("http://116.202.162.146:8000/info/?key=main").json()
         pairs = jsn.get("Number of items inserted", "N/A")
         await cache.client.set("pairs", pairs)
+        
+        jsn = get("http://116.202.162.146:8000/info/?key=multilanguage").json()
+        pairs = jsn.get("Number of items inserted", "N/A")
+        await cache.client.set("ml-pairs", pairs)
+        
         await asyncio.sleep(25)
 
 
