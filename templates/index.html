@@ -21,7 +21,9 @@
             <div class="progress-bar" role="progressbar" style="width: {{ completion_float }}%;" aria-valuenow='{{ completion_float }}' aria-valuemin="0" aria-valuemax="100"></div>
         </div>
         <br>
-        <strong>{{ "{:,}".format(total_pairs) }}</strong> image-text pairs retrieved
+        <strong>{{ "{:,}".format(total_pairs) }}</strong> image-text pairs retrieved (English dataset)
+	<br>
+	<strong>{{ "{:,}".format(total_multilanguage_pairs) }}</strong> image-text pairs retrieved (Multilingual dataset)
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
