@@ -113,6 +113,7 @@ async def index(request: Request, all: Optional[bool] = False):
     
     total_pairs = await cache.client.get("pairs")
     total_ml_pairs = await cache.client.get("ml-pairs")
+    total_nl_pairs = await cache.client.get("nl-pairs")
     
     if not total_pairs:
         total_pairs = "N/A"
@@ -129,6 +130,14 @@ async def index(request: Request, all: Optional[bool] = False):
             total_ml_pairs = int(total_ml_pairs)
         except ValueError:
             total_ml_pairs = total_ml_pairs.decode()
+    
+    if not total_nl_pairs:
+        total_nl_pairs = "N/A"
+    else:
+        try:
+            total_nl_pairs = int(total_nl_pairs)
+        except ValueError:
+            total_nl_pairs = total_nl_pairs.decode()
         
         
     body = templates.TemplateResponse('index.html', {
@@ -145,6 +154,7 @@ async def index(request: Request, all: Optional[bool] = False):
         "completion_str": f"{completed:,} / {total:,}",
         "total_pairs": total_pairs,
         "total_multilanguage_pairs": total_ml_pairs,
+        "total_nolang_pairs": total_nl_pairs,
         "eta": (await cache.client.get("eta")).decode()
     })
 
@@ -807,6 +817,10 @@ async def update_pairs_count():
         jsn = get("http://116.202.162.146:8000/info/?key=multilanguage").json()
         pairs = jsn.get("Number of items inserted", "N/A")
         await cache.client.set("ml-pairs", pairs)
+        
+        jsn = get("http://116.202.162.146:8000/info/?key=nolang").json()
+        pairs = jsn.get("Number of items inserted", "N/A")
+        await cache.client.set("nl-pairs", pairs)
         
         await asyncio.sleep(25)
 
