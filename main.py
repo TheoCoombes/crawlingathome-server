@@ -810,13 +810,8 @@ async def calculate_eta():
 
 async def update_pairs_count():
     while True:
-        jsn = get("http://116.202.162.146:8000/info/?key=main").json()
-        pairs = jsn.get("Number of items inserted", "N/A")
-        await cache.client.set("pairs", pairs)
-        
-        jsn = get("http://116.202.162.146:8000/info/?key=multilanguage").json()
-        pairs = jsn.get("Number of items inserted", "N/A")
-        await cache.client.set("ml-pairs", pairs)
+        await cache.client.set("pairs", 2323000000)
+        await cache.client.set("ml-pairs", 2381000000)
         
         jsn = get("http://116.202.162.146:8000/info/?key=nolang").json()
         pairs = jsn.get("Number of items inserted", "N/A")
