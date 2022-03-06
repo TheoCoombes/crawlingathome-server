@@ -447,18 +447,6 @@ async def calculate_eta():
             await cache.client.set("eta", "Finished")
 
 
-async def update_pairs_count():
-    while True:
-        await cache.client.set("pairs", 2323000000)
-        await cache.client.set("ml-pairs", 2381000000)
-        
-        jsn = get("http://116.202.162.146:8000/info/?key=nolang").json()
-        pairs = jsn.get("Number of items inserted", "N/A")
-        await cache.client.set("nl-pairs", pairs)
-        
-        await asyncio.sleep(25)
-
-
 # FASTAPI UTILITIES START ------ 
     
     
