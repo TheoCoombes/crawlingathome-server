@@ -20,18 +20,12 @@
         <div class="progress">
             <div class="progress-bar" role="progressbar" style="width: {{ completion_float }}%;" aria-valuenow='{{ completion_float }}' aria-valuemin="0" aria-valuemax="100"></div>
         </div>
-        <br>
-        <strong>{{ "{:,}".format(total_pairs) }}</strong> image-text pairs retrieved (English dataset)
-	<br>
-	<strong>{{ "{:,}".format(total_multilanguage_pairs) }}</strong> image-text pairs retrieved (Multilingual dataset)
-	<br>
-	<strong>{{ "{:,}".format(total_nolang_pairs) }}</strong> image-text pairs retrieved (Nolang dataset)
         <br><br>
         <strong>Estimated Time Until Completion:</strong> {{ eta }}
         <br><br><br>
-        <h2>Connected Hybrid Workers - {{ "{:,}".format(len_hybrid) }}</h2>
+        <h2>Connected Workers - {{ "{:,}".format(len_clients) }}</h2>
         <br>
-        {% if len_hybrid != 0 %}
+        {% if len_clients != 0 %}
             <table class="table">
                 <thead>
                     <tr>
@@ -44,9 +38,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for worker in hybrid_clients %}
+                    {% for worker in clients %}
                         <tr>
-                            <th scope="row"><a href="/worker/hybrid/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
+                            <th scope="row"><a href="/worker/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
                             {% if not worker.shard %}
                                 <td><i>Waiting</i></td>
                             {% else %}
@@ -61,98 +55,15 @@
                 </tbody>
             </table>
             <br>
-            {% if len_hybrid > 50 and not all %}
+            {% if len_clients > 50 and not all %}
                 <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
             {% endif %}
         {% elif completion_float == 100.0 %}
             <p>All jobs have been completed!</p>
         {% else %}
-            <p>There are no Hybrid workers currently running.</p>
+            <p>There are no workers currently connected to the server.</p>
         {% endif %}
-        <br><br>
-        
-        <h2>Connected CPU Workers - {{ "{:,}".format(len_cpu) }}</h2>
-        <br>
-        {% if len_cpu != 0 %}
-            <table class="table">
-                <thead>
-                    <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Shard #</th>
-                    <th scope="col">Shard Progress</th>
-                    <th scope="col">Jobs Completed</th>
-                    <th scope="col">Owner's Nickname</th>
-                    <th scope="col">Last Seen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for worker in cpu_clients %}
-                        <tr>
-                            <th scope="row"><a href="/worker/cpu/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if not worker.shard %}
-                                <td><i>Waiting</i></td>
-                            {% else %}
-                                <td>{{ "{:,}".format(worker.shard.number) }}</td>
-                            {% endif %}
-                            <td>{{ worker.progress }}</td>
-                            <td>{{ "{:,}".format(worker.jobs_completed) }}</td>
-                            <td>{{ worker.user_nickname }}</td>
-                            <td class="timestamp">{{ worker.last_seen }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <br>
-            {% if len_cpu > 50 and not all %}
-                <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
-            {% endif %}
-        {% elif completion_float == 100.0 %}
-            <p>All jobs have been completed!</p>
-        {% else %}
-            <p>There are no CPU workers currently running.</p>
-        {% endif %}
-        <br><br>
-        
-        <h2>Connected GPU Workers - {{ "{:,}".format(len_gpu) }}</h2>
-        <br>
-        {% if len_gpu != 0 %}
-            <table class="table">
-                <thead>
-                    <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Shard #</th>
-                    <th scope="col">Shard Progress</th>
-                    <th scope="col">Jobs Completed</th>
-                    <th scope="col">Owner's Nickname</th>
-                    <th scope="col">Last Seen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for worker in gpu_clients %}
-                        <tr>
-                            <th scope="row"><a href="/worker/gpu/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if not worker.shard %}
-                                <td><i>Waiting</i></td>
-                            {% else %}
-                               <td>{{ "{:,}".format(worker.shard.number) }}</td>
-                            {% endif %}
-                            <td>{{ worker.progress }}</td>
-                            <td>{{ "{:,}".format(worker.jobs_completed) }}</td>
-                            <td>{{ worker.user_nickname }}</td>
-                            <td class="timestamp">{{ worker.last_seen }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <br>
-            {% if len_gpu > 50 and not all %}
-                <i>Limited view to 50 workers. <a href="/?all=true">View All</a></i><br>
-            {% endif %}
-        {% elif completion_float == 100.0 %}
-            <p>All jobs have been completed!</p>
-        {% else %}
-            <p>There are no GPU workers currently running.</p>
-        {% endif %}
+	
         <br><br>
         <h2>Links</h2>
         <p>
@@ -176,7 +87,7 @@
 
         <br><br>
 
-        Server Version: v3.2.1 <br>
+        Server Version: v3.3.0 <br>
         Latest Client Version: v1.5.0 <br>
 	<br><br>
 	
