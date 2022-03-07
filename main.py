@@ -271,7 +271,7 @@ async def newJob(inp: TokenInput):
             )
         job = await Job.get(completor=client.uuid, pending=True)
     except:
-        raise HTTPException(status_code=403, detail="Either there are no new GPU jobs available, or there was an error whilst finding a job.")
+        raise HTTPException(status_code=403, detail="Either there are no new jobs available, or there was an error whilst finding a job.")
 
     job.completor = None
     await job.save()
@@ -281,7 +281,7 @@ async def newJob(inp: TokenInput):
     client.last_seen = int(time())
     await client.save()
 
-    return {"url": job.gpu_url, "start_id": job.start_id, "end_id": job.end_id, "number": job.number}
+    return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "number": job.number}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
@@ -326,49 +326,18 @@ async def markAsDone(inp: TokenCountInput):
     user, created = await Leaderboard.get_or_create(nickname=client.user_nickname)
     if created:
         user.jobs_completed = 1
-        user.pairs_scraped = inp.count
     else:
         user.jobs_completed += 1
-        user.pairs_scraped += inp.count
 
     await user.save()
 
     return "success"
 
-
-@app.post('/api/gpuInvalidDownload', response_class=PlainTextResponse)
-async def gpuInvalidDownload(inp: TokenInput):
-    if inp.type not in types:
-        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    
-    try:
-        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
-    except:
-        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
-    
-    if client.shard is None:
-        raise HTTPException(status_code=403, detail="This worker is not currently working on a job.")
-    
-    client.shard.gpu_url = None
-    client.shard.gpu = False
-    client.shard.pending = False
-    client.shard.cpu_completor = None
-    await client.shard.save()
-    
-    client.shard = None
-    client.last_seen = int(time())
-    await client.save()
-    
-    return "success"
-
     
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
-    if inp.type not in types:
-        raise HTTPException(status_code=400, detail=f"Invalid worker type. Choose from: {types}.")
-    
     try:
-        client = await Client.get(uuid=inp.token, type=inp.type).prefetch_related("shard")
+        client = await Client.get(uuid=inp.token).prefetch_related("shard")
     except:
         raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
         
@@ -434,7 +403,7 @@ async def calculate_eta():
 
         mean = sum(dataset) / len(dataset)
         mean_per_second = mean / AVERAGE_INTERVAL
-        remaining = await Job.filter(closed=False, pending=False, gpu=False).count()
+        remaining = await Job.filter(closed=False, pending=False).count()
 
         try:
             length = remaining // mean_per_second
