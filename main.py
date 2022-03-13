@@ -185,7 +185,7 @@ async def data():
 
 
 @app.get('/worker/{display_name}/data')
-async def worker_data(type: str, display_name: str):    
+async def worker_data(display_name: str):    
     try:
         c = await Client.get(display_name=display_name).prefetch_related("job")
         return {
