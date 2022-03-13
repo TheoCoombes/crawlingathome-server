@@ -83,9 +83,9 @@ async def index(request: Request, all: Optional[bool] = False):
     banner = await cache.client.get("banner")
 
     if not all:
-        clients = await Client.all().prefetch_related("shard").order_by("first_seen").limit(50)
+        clients = await Client.all().prefetch_related("job").order_by("first_seen").limit(50)
     else:
-        clients = await Client.all().prefetch_related("shard").order_by("first_seen")
+        clients = await Client.all().prefetch_related("job").order_by("first_seen")
     
     len_clients = await Client.all().count()
         
@@ -149,7 +149,7 @@ async def worker_info(display_name: str, request: Request):
     banner = await cache.client.get("banner")
         
     try:
-        data = await Client.get(display_name=display_name).prefetch_related("shard")
+        data = await Client.get(display_name=display_name).prefetch_related("job")
     except:
         raise HTTPException(status_code=404, detail="Worker not found.")
     
@@ -187,7 +187,7 @@ async def data():
 @app.get('/worker/{display_name}/data')
 async def worker_data(type: str, display_name: str):    
     try:
-        c = await Client.get(display_name=display_name).prefetch_related("shard")
+        c = await Client.get(display_name=display_name).prefetch_related("job")
         return {
             "display_name": c.display_name,
             "shard_number": c.shard.number if c.shard else "N/A",
@@ -256,13 +256,13 @@ async def getUploadAddress():
 @app.post('/api/newJob')
 async def newJob(inp: TokenInput):    
     try:
-        client = await Client.get(uuid=inp.token).prefetch_related("shard")
+        client = await Client.get(uuid=inp.token).prefetch_related("job")
     except:
         raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
-    if client.shard is not None and client.shard.pending:
-        client.shard.pending = False
-        await client.shard.save()
+    if client.job is not None and client.job.pending:
+        client.job.pending = False
+        await client.job.save()
     
     try:
         # Empty out any existing jobs that may cause errors.
@@ -282,7 +282,7 @@ async def newJob(inp: TokenInput):
     job.completor = None
     await job.save()
 
-    client.shard = job
+    client.job = job
     client.progress = "Recieved new job"
     client.last_seen = int(time())
     await client.save()
@@ -321,21 +321,21 @@ async def shouldKill(inp: TokenInput):
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
 async def markAsDone(inp: TokenCountInput):
     try:
-        client = await Client.get(uuid=inp.token).prefetch_related("shard")
+        client = await Client.get(uuid=inp.token).prefetch_related("job")
     except:
         raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
-    if client.shard is None:
+    if client.job is None:
         raise HTTPException(status_code=403, detail="You do not have an open job.")
-    if client.shard.closed:
+    if client.job.closed:
         raise HTTPException(status_code=403, detail="This job has already been marked as completed!")
 
-    client.shard.closed = True
-    client.shard.pending = False
-    client.shard.completor = client.user_nickname
-    await client.shard.save()
+    client.job.closed = True
+    client.job.pending = False
+    client.job.completor = client.user_nickname
+    await client.job.save()
 
-    client.shard = None
+    client.job = None
     client.progress = "Completed Job"
     client.jobs_completed += 1
     client.last_seen = int(time())
@@ -355,13 +355,13 @@ async def markAsDone(inp: TokenCountInput):
 @app.post('/api/bye', response_class=PlainTextResponse)
 async def bye(inp: TokenInput):
     try:
-        client = await Client.get(uuid=inp.token).prefetch_related("shard")
+        client = await Client.get(uuid=inp.token).prefetch_related("job")
     except:
         raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
         
-    if client.shard != None:
-        client.shard.pending = False
-        await client.shard.save()
+    if client.job != None:
+        client.job.pending = False
+        await client.job.save()
     
     await client.delete()
     
@@ -376,11 +376,11 @@ async def check_idle():
         await asyncio.sleep(300)
         t = int(time()) - IDLE_TIMEOUT
         
-        clients = await Client.filter(last_seen__lte=t, shard_id__not_isnull=True).prefetch_related("shard")
+        clients = await Client.filter(last_seen__lte=t, shard_id__not_isnull=True).prefetch_related("job")
         for client in clients:
-            if client.shard.pending:
-                client.shard.pending = False
-                await client.shard.save()
+            if client.job.pending:
+                client.job.pending = False
+                await client.job.save()
         
         await Client.filter(last_seen__lte=t).delete()
 
