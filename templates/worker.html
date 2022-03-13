@@ -22,10 +22,10 @@
         <br><br>
         <strong>Device ID:</strong> {{ c.user_nickname }}
 	    <br><br>
-        {% if c.shard is none %}
+        {% if c.job is none %}
             <strong>Currently Working on Job:</strong> (not currently working on a shard)
         {% else %}
-            <strong>Currently Working on Job:</strong> {{ 'UUID #{}'.format(c.shard.number) }}
+            <strong>Currently Working on Job:</strong> {{ 'UUID #{}'.format(c.job.number) }}
         {% endif %}
         <br><br>
         <strong>Latest Progress Update:</strong> "{{ c.progress }}"
