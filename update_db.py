@@ -27,7 +27,6 @@ async def init():
     jobs = []
     
     for i in range(9916):
-        data = db[i-1]
         job = Job(
             number=uuid.uuid4().int,
             url=f"https://laion-humans.s3.amazonaws.com/humans/output/people-{i:06}.tar",
@@ -41,9 +40,6 @@ async def init():
     
     print("Bulk creating jobs in database... (this may take a while)")
     await Job.bulk_create(jobs)
-    
-    del db, opened, closed, gpu_data, jobs
-    gc.collect()
     
     # We don't need to do Client as they are volatile
     # We don't need to do CPU_Leaderboard as it did not exist before v3.0.0
