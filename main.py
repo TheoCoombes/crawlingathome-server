@@ -446,7 +446,6 @@ async def app_startup():
         # The following functions only need to be executed on a single worker.
         asyncio.create_task(check_idle())
         asyncio.create_task(calculate_eta())
-        asyncio.create_task(update_pairs_count())
 
 
 @app.on_event('shutdown')
