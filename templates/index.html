@@ -12,7 +12,7 @@
             <div class="alert alert-primary" role="alert">{{ banner.decode() | safe }}</div>
             <br>
         {% endif %}
-        <h1>Crawling@Home Dashboard</h1>
+        <h1>Captions@Home Dashboard</h1>
         <br><br>
         <h2>Stats</h2>
         <br>
@@ -30,10 +30,10 @@
                 <thead>
                     <tr>
                     <th scope="col">Name</th>
-                    <th scope="col">Shard #</th>
-                    <th scope="col">Shard Progress</th>
+                    <th scope="col">Job UUID</th>
+                    <th scope="col">Job Progress</th>
                     <th scope="col">Jobs Completed</th>
-                    <th scope="col">Owner's Nickname</th>
+                    <th scope="col">Device ID</th>
                     <th scope="col">Last Seen</th>
                     </tr>
                 </thead>
@@ -64,26 +64,6 @@
             <p>There are no workers currently connected to the server.</p>
         {% endif %}
 	
-        <br><br>
-        <h2>Links</h2>
-        <p>
-            <ul>
-                <br>
-                <strong>Run Crawling@Home</strong>
-                <li><a href="/leaderboard">Leaderboard</a></li>
-                <li><a href="/install">Get Started</a></li>
-
-                <br>
-                <strong>GitHub</strong>
-                <li><a href="https://github.com/TheoCoombes/crawlingathome">Client GitHub Repository</a></li>
-                <li><a href="https://github.com/TheoCoombes/crawlingathome-server">Server GitHub Repository</a></li>
-
-                <br>
-                <strong>DALLE-pytorch</strong>
-                <li><a href="https://discord.gg/mVcgxMPD7e">DALLE-pytorch Discord server</a></li>
-                <li><a href="https://github.com/lucidrains/DALLE-pytorch">DALLE-pytorch GitHub Repository</a></li>
-            </ul>
-        </p>
 
         <br><br>
 
