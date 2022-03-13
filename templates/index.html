@@ -41,10 +41,10 @@
                     {% for worker in clients %}
                         <tr>
                             <th scope="row"><a href="/worker/{{ worker.display_name }}">{{ worker.display_name }}</a></th>
-                            {% if not worker.shard %}
+                            {% if not worker.job %}
                                 <td><i>Waiting</i></td>
                             {% else %}
-                                <td>{{ "{:,}".format(worker.shard.number) }}</td>
+                                <td>{{ worker.job.number }}</td>
                             {% endif %}
                             <td>{{ worker.progress }}</td>
                             <td>{{ "{:,}".format(worker.jobs_completed) }}</td>
