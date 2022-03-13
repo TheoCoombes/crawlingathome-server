@@ -15,17 +15,6 @@ class Job(Model):
 
     # The URL to download the shard from CommonCrawl.
     url = fields.CharField(max_length=500)
-
-    # The starting and ending sample IDs for this entire chunk (= 2 shards)
-    start_id = fields.CharField(max_length=255)
-    end_id = fields.CharField(max_length=255)
-
-    # The shard of the chunk: 0 = first 50%, 1 = last 50%.
-    shard_of_chunk = fields.IntField()
-    
-    # GPU job information (not always used)
-    gpu = fields.BooleanField()
-    gpu_url = fields.CharField(max_length=500, null=True)
     
     # Contains information about the shard's completion.
     pending = fields.BooleanField()
@@ -33,7 +22,6 @@ class Job(Model):
     
     # User data
     completor = fields.CharField(max_length=255, null=True) # Initially contains the worker's token whilst being processed, but contains the user's nickname on completion.
-    cpu_completor = fields.CharField(max_length=255, null=True) # (contains the CPU worker's user nickname on completion if this shard was also processed using a CPU worker)
 
     
     # The shard in string format (for debugging)
@@ -54,15 +42,13 @@ class Client(Model):
     # The UUID of the client.
     uuid = fields.CharField(max_length=255, pk=True)
     display_name = fields.CharField(max_length=255)
-    
-    # The type of client. (HYBRID/CPU/GPU)
-    type = fields.CharField(max_length=6)
+    kill = fields.BooleanField()
     
     # User information.
     user_nickname = fields.CharField(max_length=255)
     
     # The shard this client is currently processing.
-    shard = fields.ForeignKeyField("models.Job", related_name="worker", null=True)
+    job = fields.ForeignKeyField("models.Job", related_name="worker", null=True)
     
     # Progress information sent from the client. ( client.log(...) )
     progress = fields.CharField(max_length=255)
@@ -87,45 +73,20 @@ class Leaderboard(Model):
     
     # Data about the user.
     jobs_completed = fields.IntField(default=0)
-    pairs_scraped = fields.IntField(default=0)
-
-    
-class CPU_Leaderboard(Model):
-    """ The CPU job completion leaderboard. """
-    
-    # The user's nickname
-    nickname = fields.CharField(max_length=255, pk=True)
-    
-    # Data about the user.
-    jobs_completed = fields.IntField(default=0)
 
     
 # CUSTOM SQL QUERIES:
 
-CUSTOM_QUERY_GPU = """
+CUSTOM_QUERY = """
 UPDATE "job" 
 SET pending=true, completor='{}' 
 WHERE "number" IN 
     (
      SELECT "number" FROM "job" 
-     WHERE pending=false AND closed=false AND gpu=true 
+     WHERE pending=false AND closed=false
      ORDER BY RANDOM() LIMIT 1
      FOR UPDATE SKIP LOCKED
     )
-  AND pending=false AND closed=false AND gpu=true
-;
-"""
-
-CUSTOM_QUERY_CPU_HYBRID = """
-UPDATE "job" 
-SET pending=true, completor='{}' 
-WHERE "number" IN 
-    (
-     SELECT "number" FROM "job" 
-     WHERE pending=false AND closed=false AND gpu=false 
-     ORDER BY RANDOM() LIMIT 1
-     FOR UPDATE SKIP LOCKED
-    )
-  AND pending=false AND closed=false AND gpu=false
+  AND pending=false AND closed=false
 ;
 """
