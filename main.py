@@ -287,7 +287,7 @@ async def newJob(inp: TokenInput):
     client.last_seen = int(time())
     await client.save()
 
-    return {"url": job.url, "start_id": job.start_id, "end_id": job.end_id, "number": job.number}
+    return {"url": job.url, "number": job.number}
 
 
 @app.get('/api/jobCount', response_class=PlainTextResponse)
