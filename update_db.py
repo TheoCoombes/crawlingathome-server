@@ -28,7 +28,7 @@ async def init():
     
     for i in range(9916):
         job = Job(
-            number=uuid.uuid4().int,
+            number=i,
             url=f"https://laion-humans.s3.amazonaws.com/humans/output/people-{i:06}.tar",
             pending=False,
             closed=False,
