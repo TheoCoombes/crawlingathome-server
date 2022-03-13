@@ -32,12 +32,10 @@ templates = Jinja2Templates(directory="templates")
 
 class TokenInput(BaseModel):
     token: str
-    type: Optional[str] = "HYBRID"
 
 class TokenProgressInput(BaseModel):
     token: str
     progress: str
-    type: Optional[str] = "HYBRID"
 
 class TokenCountInput(BaseModel): # For marking as done
     token: str
@@ -47,11 +45,18 @@ class TokenCountInput(BaseModel): # For marking as done
     end_id: Optional[str] = None
     shard: Optional[int] = None
 
-class MarkAsDoneInput(BaseModel):
+class AdminInput(BaseModel):
     password: str
-    shards: list
-    count: int
-    nickname: str       
+    device_format: str
+     
+@app.post('/admin/kill-devices', response_class=PlainTextResponse)
+async def bye(inp: AdminInput):
+    if inp.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=403, detail="Invalid Auth")
+    
+    await Client.filter(user_nickname__startswith=inp.device_format).update(kill=True)
+    
+    return "success"
 
         
 # FRONTEND START ------
@@ -222,6 +227,7 @@ async def new(nickname: str):
     await Client.create(
         uuid=uuid,
         display_name=display_name,
+        kill=False,
         user_nickname=nickname,
         progress="Initialized",
         jobs_completed=0,
@@ -298,6 +304,18 @@ async def updateProgress(inp: TokenProgressInput):
         raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
     
     return "success"
+
+@app.post('/api/shouldKill', response_class=PlainTextResponse)
+async def shouldKill(inp: TokenInput):
+    try:
+        client = await Client.get(uuid=inp.token)
+    except:
+        raise HTTPException(status_code=404, detail="The server could not find this worker. Did the worker time out?")
+    
+    if client.kill:
+        return "True"
+    else:
+        return "False"
 
 
 @app.post('/api/markAsDone', response_class=PlainTextResponse)
