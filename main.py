@@ -376,9 +376,9 @@ async def check_idle():
         await asyncio.sleep(300)
         t = int(time()) - IDLE_TIMEOUT
         
-        clients = await Client.filter(last_seen__lte=t, shard_id__not_isnull=True).prefetch_related("job")
+        clients = await Client.filter(last_seen__lte=t).prefetch_related("job")
         for client in clients:
-            if client.job.pending:
+            if if client.job is not None and client.job.pending:
                 client.job.pending = False
                 await client.job.save()
         
