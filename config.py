@@ -5,7 +5,7 @@ SQL_CONN_URL = "postgres:///crawlingathome" # Example config for a postgres data
 REDIS_CONN_URL = "redis://127.0.0.1" # The Redis connection URL, used for caching webpages to avoid database strain.
 
 # WORKER CONFIG
-IDLE_TIMEOUT = 7200 # The interval, in seconds, until a worker is kicked for being idle. (default 2 hours)
+IDLE_TIMEOUT = 14400 # The interval, in seconds, until a worker is kicked for being idle. (default 2 hours)
 
 # ETA CALCULATION
 AVERAGE_INTERVAL = 900 # The interval for each measurement of the averages to take place. (default 15 minutes)
