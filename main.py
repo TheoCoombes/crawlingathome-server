@@ -373,7 +373,7 @@ async def bye(inp: TokenInput):
 
 async def check_idle():
     while True:
-        await asyncio.sleep(300)
+        print("||| Checking Idle... |||")
         t = int(time()) - IDLE_TIMEOUT
         
         clients = await Client.filter(last_seen__lte=t).prefetch_related("job")
@@ -383,6 +383,7 @@ async def check_idle():
                 await client.job.save()
         
         await Client.filter(last_seen__lte=t).delete()
+        await asyncio.sleep(300)
 
         
 async def calculate_eta():
