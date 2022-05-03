@@ -378,7 +378,7 @@ async def check_idle():
         
         clients = await Client.filter(last_seen__lte=t).prefetch_related("job")
         for client in clients:
-            if if client.job is not None and client.job.pending:
+            if client.job is not None and client.job.pending:
                 client.job.pending = False
                 await client.job.save()
         
