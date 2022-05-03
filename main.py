@@ -372,6 +372,8 @@ async def bye(inp: TokenInput):
 
 
 async def check_idle():
+    await asyncio.sleep(5)
+    
     while True:
         print("||| Checking Idle... |||")
         t = int(time()) - IDLE_TIMEOUT
