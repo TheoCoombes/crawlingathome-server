@@ -26,16 +26,17 @@ async def init():
     
     jobs = []
     
-    for i in range(9916):
-        job = Job(
-            number=i+1,
-            url=f"https://laion-humans.s3.amazonaws.com/humans/output/people-{i:06}.tar",
-            pending=False,
-            closed=False,
-            completor=None
-        )
-        
-        jobs.append(job)
+    for i in range(128):
+        for i2 in range(354):
+            job = Job(
+                number=i+1,
+                url=f"https://huggingface.co/datasets/laion/laion2B-multi-joined/resolve/main/part-{i:05}-fcd86c9b-36f4-49ff-bea1-8c9a0e029fb7-c000.snappy.parquet:{(i2+1):03}",
+                pending=False,
+                closed=False,
+                completor=None
+            )
+
+            jobs.append(job)
     
     
     print("Bulk creating jobs in database... (this may take a while)")
