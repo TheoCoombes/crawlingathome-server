@@ -25,17 +25,19 @@ async def init():
     print("Processing jobs... (this may take a while)")
     
     jobs = []
+    count = 0
     
     for i in range(128):
         for i2 in range(354):
             job = Job(
-                number=i+1,
+                number=count+1,
                 url=f"https://huggingface.co/datasets/laion/laion2B-multi-joined/resolve/main/part-{i:05}-fcd86c9b-36f4-49ff-bea1-8c9a0e029fb7-c000.snappy.parquet:{(i2+1):03}",
                 pending=False,
                 closed=False,
                 completor=None
             )
-
+            
+            count += 1
             jobs.append(job)
     
     
