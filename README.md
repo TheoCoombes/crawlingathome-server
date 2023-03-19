@@ -1,4 +1,4 @@
-# Crawling@Home Server
+# LAION-5B Tracker Server
 [![Discord Chat](https://img.shields.io/discord/823813159592001537?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/dall-e)
 
 A server powering Crawling@Home's effort to filter CommonCrawl with CLIP, building a large scale image-text dataset.
