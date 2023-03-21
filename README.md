@@ -1,3 +1,7 @@
+NOTE: This repo has now been rewritten into a general purpose distributed compute job manager, see below:
+* DistCompute Client: [TheoCoombes/distcompute-client](https://github.com/TheoCoombes/distcompute-client)
+* DistCompute Tracker Server: [TheoCoombes/distcompute-tracker](https://github.com/TheoCoombes/distcompute-tracker)
+
 # LAION-5B Tracker Server
 [![Discord Chat](https://img.shields.io/discord/823813159592001537?color=5865F2&logo=discord&logoColor=white)](https://discord.gg/dall-e)
 
